@@ -1,0 +1,13 @@
+{
+  "name": "loc-bulk-access",
+  "description": "Firefox extension to enable bulk access to Library of Congress digital collections data and assets",
+  "scripts": {
+    "listen": "web-ext run --source-dir \"loc-bulk-access/\""
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "eslint": "^8.49.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.28.1"
+  }
+}
