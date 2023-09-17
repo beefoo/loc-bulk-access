@@ -2,7 +2,7 @@
   "name": "loc-bulk-access",
   "description": "Firefox extension to enable bulk access to Library of Congress digital collections data and assets",
   "scripts": {
-    "listen": "web-ext run --source-dir \"loc-bulk-access/\""
+    "listen": "web-ext run --source-dir \"loc-bulk-access/\" --devtools"
   },
   "dependencies": {},
   "devDependencies": {

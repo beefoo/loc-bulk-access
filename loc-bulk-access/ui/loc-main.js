@@ -1,3 +1,3 @@
 (function initLOC() {
-  // const app = new App({});
+  const app = new BulkAccess({});
 }());
