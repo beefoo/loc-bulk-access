@@ -4,17 +4,16 @@
   "version": "1.0",
   "description": "Enable bulk access to Library of Congress digital collections data and assets",
   "icons": {
-    "48": "icons/loc-48x48.png",
-    "96": "icons/loc-96x96.png"
+    "48": "icons/loc-bulk-access-48x48.png",
+    "96": "icons/loc-bulk-access-96x96.png"
   },
-  "content_scripts": [
-    {
-      "matches": ["*://www.loc.gov/*"],
-      "js": ["loc-main.js"]
-    }
-  ],
+  "browser_action": {
+    "default_icon": "icons/loc-32x32.png",
+    "default_title": "Library of Congress Bulk Access",
+    "default_popup": "ui/main.html"
+  },
   "permissions": [
-    "*://www.loc.gov/*",
+    "*://*.loc.gov/*",
     "storage",
     "unlimitedStorage",
     "activeTab",
