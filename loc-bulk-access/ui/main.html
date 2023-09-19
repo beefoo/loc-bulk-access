@@ -7,8 +7,23 @@
   </head>
 
 <body>
-  <div id="main" class="main">Loading...</div>
+  <div id="main" class="main is-loading">
+    <div id="message" class="message">Analyzing metadata</div>
+    <button id="queue-button" class="queue-button">+ Add <span></span> to queue</button>
+    <table id="queue-table" class="queue-table">
+      <thead>
+        <tr>
+          <th>Queued item</th>
+          <th>Count</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="queue-tbody"></tbody>
+    </table>    
+  </div>  
   
+  <script src="utilities.js"></script>
   <script src="bulk-access.js"></script>
   <script src="loc-main.js"></script>
 </body>
