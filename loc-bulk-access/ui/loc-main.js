@@ -3,18 +3,18 @@
 (function initLOC() {
   // function for validating an API response
   const apiResponseValidator = (apiResponse) => {
-    const resp = { valid: false, type: 'Unknown', count: 0 };
+    const resp = { valid: false, message: 'This is not a valid page. Please search or navigate to a page with at least one collection item.' };
     if ('item' in apiResponse) {
       resp.valid = true;
-      resp.type = 'Item';
-      resp.count = 1;
+      resp.message = 'Found one collection on this page.';
     } else if ('pagination' in apiResponse && 'results' in apiResponse) {
       if (apiResponse.results.length > 0 && 'item' in apiResponse.results[0]) {
+        const count = apiResponse.pagination.of;
+        const countF = count.toLocaleString();
         resp.valid = true;
-        resp.type = 'Search result';
-        resp.count = apiResponse.pagination.of;
+        resp.message = `Found ${countF} items in this search result.`;
         if ('site_type' in apiResponse && apiResponse.site_type === 'collections') {
-          resp.type = 'Collection';
+          resp.message = `Found ${countF} items in this collection.`;
         }
       }
     }
