@@ -2,7 +2,7 @@
 // The main bulk-access.js should be agnostic to data source and one day could support other APIs
 (function initLOC() {
   // function for validating an API response
-  const validator = (apiResponse) => {
+  const apiResponseValidator = (apiResponse) => {
     const resp = { valid: false, type: 'Unknown', count: 0 };
     if ('item' in apiResponse) {
       resp.valid = true;
@@ -21,10 +21,16 @@
     return resp;
   };
 
+  // function for creating an API URL based on current URL
+  const getAPIURL = (url) => {
+    const apiURL = Utilities.appendParamsToURL(url, { fo: 'json', c: 150 });
+    return apiURL;
+  };
+
   const config = {
-    appendParamsToURL: { fo: 'json', c: 150 },
+    apiResponseValidator,
     baseURL: 'https://www.loc.gov/',
-    validator,
+    getAPIURL,
   };
   return new BulkAccess(config);
 }());

@@ -1,9 +1,9 @@
 class BulkAccess {
   constructor(options = {}) {
     const defaults = {
-      appendParamsToURL: {},
+      apiResponseValidator: (apiResponse) => ({ valid: false, type: 'Unknown', count: 0 }),
       baseURL: 'https://www.mywebsite.org/',
-      validator: (apiResponse) => ({ valid: false, type: 'Unknown', count: 0 }),
+      getAPIURL: (url) => url,
     };
     this.options = Object.assign(defaults, options);
     this.init();
@@ -11,18 +11,29 @@ class BulkAccess {
 
   init() {
     this.el = document.getElementById('main');
+    this.messageEl = document.getElementById('message');
 
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       this.processURL(tabs[0].url);
     });
   }
 
-  async processURL(url) {
+  processURL(url) {
     const { el } = this;
     el.classList.add('is-loading');
-    const apiURL = Utilities.appendParamsToURL(url, this.options.appendParamsToURL);
-    const response = await fetch(apiURL);
-    const apiResponse = await response.json();
-    const valid = this.options.validator(apiResponse);
+    const apiURL = this.options.getAPIURL(url);
+    fetch(apiURL)
+      .then((response) => response.json())
+      .then((data) => {
+        const validator = this.options.apiResponseValidator(data);
+        if (validator.valid) {
+          console.log(validator);
+        } else {
+          console.log(validator);
+        }
+      })
+      .catch((error) => {
+        console.log(error);
+      });
   }
 }
