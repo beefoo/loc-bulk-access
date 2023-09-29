@@ -10,7 +10,7 @@
   "browser_action": {
     "default_icon": "icons/loc-32x32.png",
     "default_title": "Library of Congress Bulk Access",
-    "default_popup": "ui/main.html"
+    "default_popup": "ui/popup.html"
   },
   "permissions": [
     "*://*.loc.gov/*",
@@ -18,7 +18,6 @@
     "unlimitedStorage",
     "activeTab",
     "downloads",
-    "downloads.open",
-    "webNavigation"
+    "downloads.open"
   ]
 }

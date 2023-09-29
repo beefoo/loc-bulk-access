@@ -1,0 +1,38 @@
+.message {
+  width: 320px;
+}
+.popup.is-loading .message::after {
+  content: '.';
+  animation: dots 1s steps(5, end) infinite;
+}
+.popup {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+button.button {
+  display: none;
+  margin-right: 0;
+}
+button.button.active {
+  display: inline-block;
+}
+
+button.add-queue-button.added {
+  background-color: var(--success-inverse);
+  cursor: default;
+}
+button.button span.number {
+  font-size: 0.8rem;
+  border-radius: 50%;
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.333);
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  vertical-align: middle;
+  font-weight: bold;
+}
+button.button:hover span.number {
+  background: rgba(255, 255, 255, 0.333);
+}
