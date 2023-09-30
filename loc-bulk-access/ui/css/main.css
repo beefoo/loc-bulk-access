@@ -67,3 +67,20 @@ button:hover {
   background-color: var(--success-light);
   border-color: var(--success-dark);
 }
+
+.queue-table {
+  width: 100%;
+}
+.queue-table .actions {
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}

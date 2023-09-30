@@ -56,6 +56,7 @@ class BulkAccess {
           el.classList.remove('is-loading');
           if (resp.valid) {
             resp.url = url;
+            resp.apiURL = apiURL;
             resolve(resp);
           } else {
             reject(validator.message);
@@ -106,9 +107,10 @@ class BulkAccess {
       });
     };
     this.viewQueueEl.onclick = (e) => {
-      Utilities.storageGet(this.browser, 'queuePageURL', 'queue.html').then((pageURL) => {
-        if (pageURL === 'queue.html') {
-          this.createTab('queue.html');
+      const queuePageURL = 'queue.html';
+      Utilities.storageGet(this.browser, 'queuePageURL', queuePageURL).then((pageURL) => {
+        if (pageURL === queuePageURL) {
+          this.createTab(queuePageURL);
         } else {
           // check if query tab is already open
           this.browser.tabs.query({ url: pageURL }).then((tabs) => {
@@ -117,14 +119,14 @@ class BulkAccess {
               this.browser.tabs.update(tab.id, { active: true });
               window.close();
             } else {
-              this.createTab('queue.html');
+              this.createTab(queuePageURL);
             }
           }, (error) => {
-            this.createTab('queue.html');
+            this.createTab(queuePageURL);
           });
         }
       }, (error) => {
-        this.createTab('queue.html');
+        this.createTab(queuePageURL);
       });
     };
 
@@ -150,6 +152,7 @@ class BulkAccess {
   }
 
   onViewQueue() {
+    this.queueContainer = document.getElementById('queue-tbody');
     // retrieve current tab and queue
     const tabsPromise = this.browser.tabs.query({ active: true, currentWindow: true });
     const queuePromise = this.loadQueue();
@@ -158,7 +161,29 @@ class BulkAccess {
       this.queue = queue;
       const { url } = tabs[0];
       this.browser.storage.local.set({ queuePageURL: url });
+      this.renderQueue();
     });
+  }
+
+  renderQueue() {
+    const { queueContainer } = this;
+    let html = '';
+    this.queue.forEach((qitem) => {
+      const { item } = qitem;
+      const title = 'facetsString' in item && item.facetsString.length > 0 ? `${item.title} ${item.facetsString}` : item.title;
+      html += '<tr>';
+      html += `<td class="type type-${item.type}">${item.type}</td>`;
+      html += `<td><a href="${item.url}" target="_blank">${title}</a></td>`;
+      html += `<td class="count">${item.count}</td>`;
+      html += `<td class="status type-${qitem.status}">${qitem.status}</td>`;
+      html += '<td class="actions">';
+      html += '  <button class="move-up" title="Move up in queue"><span class="visually-hidden">move up</span>🠹</button>';
+      html += '  <button class="move-down" title="Move down in queue"><span class="visually-hidden">move down</span>🠻</button>';
+      html += '  <button class="remove" title="Remove from queue"><span class="visually-hidden">remove</span>×</button>';
+      html += '</td>';
+      html += '</tr>';
+    });
+    queueContainer.innerHTML = html;
   }
 
   showQueueButton() {

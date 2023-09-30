@@ -26,10 +26,13 @@ const apiResponseValidator = (apiResponse) => {
         resp.type = 'collection';
         if ('title' in apiResponse) resp.title = apiResponse.title;
       }
+      resp.facets = [];
+      resp.facetsString = '';
       if ('search' in apiResponse) {
         const { search } = apiResponse;
         resp.facets = 'facet_limits' in search ? search.facet_limits.split('|') : [];
-        if ('query' in search) resp.facets.unshift(`query:"${search.query}"`);
+        if ('query' in search && search.query.length > 0) resp.facets.unshift(`query:"${search.query}"`);
+        resp.facetsString = resp.facets.map((f) => `<span>${f}</span>`).join(', ');
       }
     }
   }
