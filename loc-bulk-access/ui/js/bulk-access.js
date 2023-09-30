@@ -34,7 +34,7 @@ class BulkAccess {
         time: Date.now(),
         item,
       });
-      browser.storage.local.set({ queue: this.queue }).then(() => {
+      this.browser.storage.local.set({ queue: this.queue }).then(() => {
         resolve();
       // set failed
       }, (error) => {
@@ -66,6 +66,11 @@ class BulkAccess {
           reject(error);
         });
     });
+  }
+
+  createTab(url) {
+    this.browser.tabs.create({ active: true, url });
+    window.close();
   }
 
   loadQueue() {
@@ -101,9 +106,25 @@ class BulkAccess {
       });
     };
     this.viewQueueEl.onclick = (e) => {
-      this.browser.tabs.create({
-        active: true,
-        url: 'queue.html',
+      Utilities.storageGet(this.browser, 'queuePageURL', 'queue.html').then((pageURL) => {
+        if (pageURL === 'queue.html') {
+          this.createTab('queue.html');
+        } else {
+          // check if query tab is already open
+          this.browser.tabs.query({ url: pageURL }).then((tabs) => {
+            if (tabs.length > 0) {
+              const [tab] = tabs;
+              this.browser.tabs.update(tab.id, { active: true });
+              window.close();
+            } else {
+              this.createTab('queue.html');
+            }
+          }, (error) => {
+            this.createTab('queue.html');
+          });
+        }
+      }, (error) => {
+        this.createTab('queue.html');
       });
     };
 
@@ -129,7 +150,15 @@ class BulkAccess {
   }
 
   onViewQueue() {
+    // retrieve current tab and queue
+    const tabsPromise = this.browser.tabs.query({ active: true, currentWindow: true });
     const queuePromise = this.loadQueue();
+    Promise.all([tabsPromise, queuePromise]).then((values) => {
+      const [tabs, queue] = values;
+      this.queue = queue;
+      const { url } = tabs[0];
+      this.browser.storage.local.set({ queuePageURL: url });
+    });
   }
 
   showQueueButton() {
