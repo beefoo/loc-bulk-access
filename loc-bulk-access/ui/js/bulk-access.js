@@ -56,6 +56,13 @@ class BulkAccess {
       const removeItem = e.target.closest('.remove-item');
       const moveItemUp = e.target.closest('.move-item-up');
       const moveItemDown = e.target.closest('.move-item-down');
+      if (removeItem) {
+        this.removeQueueItem(parseInt(removeItem.getAttribute('data-index'), 10));
+      } else if (moveItemUp) {
+        this.moveQueueItem(parseInt(moveItemUp.getAttribute('data-index'), 10), -1);
+      } else if (moveItemDown) {
+        this.moveQueueItem(parseInt(moveItemDown.getAttribute('data-index'), 10), 1);
+      }
     };
   }
 
@@ -77,7 +84,7 @@ class BulkAccess {
         time: Date.now(),
         item,
       });
-      this.browser.storage.local.set({ queue: this.queue }).then(() => {
+      this.saveQueue().then(() => {
         resolve();
       // set failed
       }, (error) => {
@@ -126,6 +133,17 @@ class BulkAccess {
     messageEl.classList.remove('error', 'success', 'notice');
     messageEl.classList.add(type);
     messageEl.innerHTML = text;
+  }
+
+  moveQueueItem(index, amount) {
+    console.log(index + amount);
+    const newIndex = Math.max(Math.min(index + amount, this.queue.length - 1), 0);
+    console.log(index, newIndex);
+    if (newIndex === index) return;
+    const [item] = this.queue.splice(index, 1);
+    this.queue.splice(newIndex, 0, item);
+    this.saveQueue();
+    this.renderQueue();
   }
 
   onAddedToQueue() {
@@ -179,6 +197,12 @@ class BulkAccess {
     });
   }
 
+  removeQueueItem(queueIndex) {
+    this.queue.splice(queueIndex, 1);
+    this.saveQueue();
+    this.renderQueue();
+  }
+
   renderQueue() {
     const { queueContainer } = this;
     let html = '';
@@ -196,13 +220,17 @@ class BulkAccess {
       html += `<td class="count">${item.countF}</td>`;
       html += `<td class="status type-${qitem.status}">${qitem.status}</td>`;
       html += '<td class="actions">';
-      html += '  <button class="move-item-up" title="Move up in queue"><span class="visually-hidden">move up</span>🠹</button>';
-      html += '  <button class="move-item-down" title="Move down in queue"><span class="visually-hidden">move down</span>🠻</button>';
-      html += '  <button class="remove-item" title="Remove from queue"><span class="visually-hidden">remove</span>×</button>';
+      html += `  <button class="move-item-up" data-index="${index}" title="Move up in queue"><span class="visually-hidden">move up</span>🠹</button>`;
+      html += `  <button class="move-item-down" data-index="${index}" title="Move down in queue"><span class="visually-hidden">move down</span>🠻</button>`;
+      html += `  <button class="remove-item" data-index="${index}" title="Remove from queue"><span class="visually-hidden">remove</span>×</button>`;
       html += '</td>';
       html += '</tr>';
     });
     queueContainer.innerHTML = html;
+  }
+
+  saveQueue() {
+    return this.browser.storage.local.set({ queue: this.queue });
   }
 
   showQueueButton() {
