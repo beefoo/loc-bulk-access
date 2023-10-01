@@ -36,6 +36,14 @@ html {
 }
 body {
   line-height: 1.4;
+  margin: 0;
+  padding: 0;
+}
+a {
+  color: var(--loc-primary);
+}
+a:hover {
+  color: var(--loc-primary-darker);
 }
 button {
   color: var(--text-inverted);
@@ -47,9 +55,35 @@ button {
   cursor: pointer;
   font-size: 1.1rem;
   box-sizing: border-box;
+  border-radius: 3px;
 }
 button:hover {
   background: var(--loc-primary-darker);
+}
+table {
+  border-collapse: collapse;
+  margin: 0;
+}
+td, th {
+  padding: 6px;
+  border-right: 1px solid rgba(0, 0, 0, 0.33);
+}
+td:last-child,
+th:last-child {
+  border: none;
+}
+thead th {
+  font-weight: bold;
+  text-align: left;
+  background-color: var(--text);
+  color: var(--text-inverted);
+  position: sticky;
+  top: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.33);
+}
+
+tbody tr:nth-child(even) {
+  background-color: #dbdbdb;
 }
 
 .message {
@@ -73,6 +107,28 @@ button:hover {
 }
 .queue-table .actions {
   white-space: nowrap;
+}
+.queue-table .title a .facet {
+  color: var(--text-inverted);
+  background: var(--loc-primary);
+  display: inline-block;
+  vertical-align: middle;
+  font-size: 0.8rem;
+  padding: 1px 4px;
+  margin: 0 3px;
+  text-decoration: none;
+  border-radius: 2px;
+}
+.queue-table .title a:hover .facet {
+  background-color: var(--loc-primary-darker);
+}
+.queue-table .actions button {
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  font-size: 1.2rem;
+  margin: 0 2px 0 0;
 }
 
 .visually-hidden {

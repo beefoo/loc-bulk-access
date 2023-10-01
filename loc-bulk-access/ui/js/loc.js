@@ -10,7 +10,9 @@ const apiResponseValidator = (apiResponse) => {
     resp.message = 'Found one item on this page.';
     resp.type = 'item';
     resp.count = 1;
+    resp.countF = '1';
     resp.title = apiResponse.item.title;
+    resp.facets = [];
   } else if ('pagination' in apiResponse && 'results' in apiResponse) {
     if (apiResponse.results.length > 0 && 'item' in apiResponse.results[0]) {
       const count = apiResponse.pagination.of;
@@ -27,12 +29,10 @@ const apiResponseValidator = (apiResponse) => {
         if ('title' in apiResponse) resp.title = apiResponse.title;
       }
       resp.facets = [];
-      resp.facetsString = '';
       if ('search' in apiResponse) {
         const { search } = apiResponse;
         resp.facets = 'facet_limits' in search ? search.facet_limits.split('|') : [];
         if ('query' in search && search.query.length > 0) resp.facets.unshift(`query:"${search.query}"`);
-        resp.facetsString = resp.facets.map((f) => `<span>${f}</span>`).join(', ');
       }
     }
   }

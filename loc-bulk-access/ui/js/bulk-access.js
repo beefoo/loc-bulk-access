@@ -16,6 +16,49 @@ class BulkAccess {
     this.queue = [];
   }
 
+  addPopupListeners() {
+    // add listeners
+    this.addToQueueEl.onclick = (e) => {
+      this.addToQueue(this.currentQueueItem).then(() => {
+        this.onAddedToQueue();
+      }, (error) => {
+        this.message(error, 'error');
+      });
+    };
+    this.viewQueueEl.onclick = (e) => {
+      const queuePageURL = 'queue.html';
+      Utilities.storageGet(this.browser, 'queuePageURL', queuePageURL).then((pageURL) => {
+        if (pageURL === queuePageURL) {
+          this.createTab(queuePageURL);
+        } else {
+          // check if query tab is already open
+          this.browser.tabs.query({ url: pageURL }).then((tabs) => {
+            if (tabs.length > 0) {
+              const [tab] = tabs;
+              this.browser.tabs.update(tab.id, { active: true });
+              window.close();
+            } else {
+              this.createTab(queuePageURL);
+            }
+          }, (error) => {
+            this.createTab(queuePageURL);
+          });
+        }
+      }, (error) => {
+        this.createTab(queuePageURL);
+      });
+    };
+  }
+
+  addQueueListeners() {
+    const { queueContainer } = this;
+    queueContainer.onclick = (e) => {
+      const removeItem = e.target.closest('.remove-item');
+      const moveItemUp = e.target.closest('.move-item-up');
+      const moveItemDown = e.target.closest('.move-item-down');
+    };
+  }
+
   addToQueue(item) {
     return new Promise((resolve, reject) => {
       if (!item) {
@@ -98,37 +141,7 @@ class BulkAccess {
     this.viewQueueEl = document.getElementById('view-queue-button');
     this.currentQueueItem = false;
 
-    // add listeners
-    this.addToQueueEl.onclick = (e) => {
-      this.addToQueue(this.currentQueueItem).then(() => {
-        this.onAddedToQueue();
-      }, (error) => {
-        this.message(error, 'error');
-      });
-    };
-    this.viewQueueEl.onclick = (e) => {
-      const queuePageURL = 'queue.html';
-      Utilities.storageGet(this.browser, 'queuePageURL', queuePageURL).then((pageURL) => {
-        if (pageURL === queuePageURL) {
-          this.createTab(queuePageURL);
-        } else {
-          // check if query tab is already open
-          this.browser.tabs.query({ url: pageURL }).then((tabs) => {
-            if (tabs.length > 0) {
-              const [tab] = tabs;
-              this.browser.tabs.update(tab.id, { active: true });
-              window.close();
-            } else {
-              this.createTab(queuePageURL);
-            }
-          }, (error) => {
-            this.createTab(queuePageURL);
-          });
-        }
-      }, (error) => {
-        this.createTab(queuePageURL);
-      });
-    };
+    this.addPopupListeners();
 
     // retrieve current tab and queue
     const tabsPromise = this.browser.tabs.query({ active: true, currentWindow: true });
@@ -153,6 +166,7 @@ class BulkAccess {
 
   onViewQueue() {
     this.queueContainer = document.getElementById('queue-tbody');
+    this.addQueueListeners();
     // retrieve current tab and queue
     const tabsPromise = this.browser.tabs.query({ active: true, currentWindow: true });
     const queuePromise = this.loadQueue();
@@ -168,18 +182,23 @@ class BulkAccess {
   renderQueue() {
     const { queueContainer } = this;
     let html = '';
-    this.queue.forEach((qitem) => {
+    this.queue.forEach((qitem, index) => {
       const { item } = qitem;
-      const title = 'facetsString' in item && item.facetsString.length > 0 ? `${item.title} ${item.facetsString}` : item.title;
+      const facetsString = 'facets' in item && item.facets.length > 0 ? item.facets.map((f) => `<span class="facet">${f}</span>`).join('') : '';
+      const title = facetsString.length > 0 ? `${item.title} ${facetsString}` : item.title;
       html += '<tr>';
+      html += '<td>';
+      html += `  <label for="select-item-${index}" class="visually-hidden">Select this item</label>`;
+      html += `  <input id="select-item-${index}" type="checkbox" class="select-item" checked data-index="${index}" `;
+      html += '</td>';
       html += `<td class="type type-${item.type}">${item.type}</td>`;
-      html += `<td><a href="${item.url}" target="_blank">${title}</a></td>`;
-      html += `<td class="count">${item.count}</td>`;
+      html += `<td class="title"><a href="${item.url}" target="_blank">${title}</a></td>`;
+      html += `<td class="count">${item.countF}</td>`;
       html += `<td class="status type-${qitem.status}">${qitem.status}</td>`;
       html += '<td class="actions">';
-      html += '  <button class="move-up" title="Move up in queue"><span class="visually-hidden">move up</span>🠹</button>';
-      html += '  <button class="move-down" title="Move down in queue"><span class="visually-hidden">move down</span>🠻</button>';
-      html += '  <button class="remove" title="Remove from queue"><span class="visually-hidden">remove</span>×</button>';
+      html += '  <button class="move-item-up" title="Move up in queue"><span class="visually-hidden">move up</span>🠹</button>';
+      html += '  <button class="move-item-down" title="Move down in queue"><span class="visually-hidden">move down</span>🠻</button>';
+      html += '  <button class="remove-item" title="Remove from queue"><span class="visually-hidden">remove</span>×</button>';
       html += '</td>';
       html += '</tr>';
     });
