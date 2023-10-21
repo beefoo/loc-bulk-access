@@ -23,7 +23,27 @@
         </tr>
       </thead>
       <tbody id="queue-tbody"></tbody>
-    </table>    
+    </table>
+    <div class="queue-toolbar">
+      <div class="queue-menu">
+        <div class="queue-actions">
+          <button class="toggle">Start queue</button>
+        </div>
+        <div class="queue-options">
+          <label for="include-data-checkbox">
+            <input id="include-data-checkbox" name="include-data" type="checkbox" checked />
+            Download data?
+          </label>
+          <label for="include-assets-checkbox">
+            <input id="include-assets-checkbox" name="include-assets" type="checkbox" />
+            Download assets?
+          </label>
+        </div>
+      </div>
+      <div class="queue-status">
+        Status message here
+      </div>
+    </div>     
   </div>  
   
   <script src="js/loc.js"></script>

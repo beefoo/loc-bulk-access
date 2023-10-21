@@ -68,9 +68,12 @@ td, th {
   padding: 6px;
   border-right: 1px solid rgba(0, 0, 0, 0.33);
 }
+td {
+  border-bottom: 2px solid black;
+}
 td:last-child,
 th:last-child {
-  border: none;
+  border-right: none;
 }
 thead th {
   font-weight: bold;
@@ -80,10 +83,6 @@ thead th {
   position: sticky;
   top: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.33);
-}
-
-tbody tr:nth-child(even) {
-  background-color: #dbdbdb;
 }
 
 .message {
@@ -129,6 +128,44 @@ tbody tr:nth-child(even) {
   line-height: 24px;
   font-size: 1.2rem;
   margin: 0 2px 0 0;
+}
+
+.queue-toolbar {
+  width: 100%;
+  position: sticky;
+  bottom: 0;
+}
+.queue-menu {
+  width: 100%;
+  display: flex;
+  box-sizing: border-box;
+  padding: 6px;
+  background: #eee;
+}
+.queue-actions {
+  text-align: center;
+}
+.queue-actions button {
+  margin-bottom: 0;
+}
+.queue-options {
+  text-align: center;
+}
+.queue-options label {
+  display: inline-block;
+  margin: 6px;
+}
+.queue-status {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px;
+  background: black;
+  color: white;
+  font-size: 0.9rem;
+  font-family: 'Courier New', Courier, monospace;
+  max-height: 300px;
+  overflow: hidden;
+  overflow-y: auto;
 }
 
 .visually-hidden {
