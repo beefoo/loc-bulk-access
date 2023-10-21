@@ -99,23 +99,28 @@ class BulkAccess {
     el.classList.add('is-loading');
     const apiURL = this.options.getAPIURL(url);
     return new Promise((resolve, reject) => {
-      fetch(apiURL)
-        .then((response) => response.json())
-        .then((data) => {
-          const resp = this.options.apiResponseValidator(data);
-          el.classList.remove('is-loading');
-          if (resp.valid) {
-            resp.url = url;
-            resp.apiURL = apiURL;
-            resolve(resp);
-          } else {
-            reject(validator.message);
-          }
-        })
-        .catch((error) => {
-          el.classList.remove('is-loading');
-          reject(error);
-        });
+      if (apiURL !== false) {
+        fetch(apiURL)
+          .then((response) => response.json())
+          .then((data) => {
+            const resp = this.options.apiResponseValidator(data);
+            el.classList.remove('is-loading');
+            if (resp.valid) {
+              resp.url = url;
+              resp.apiURL = apiURL;
+              resolve(resp);
+            } else {
+              reject(validator.message);
+            }
+          })
+          .catch((error) => {
+            el.classList.remove('is-loading');
+            reject(error);
+          });
+      } else {
+        el.classList.remove('is-loading');
+        reject(new Error('Bulk access tool only works on www.loc.gov URLs.'));
+      }
     });
   }
 
