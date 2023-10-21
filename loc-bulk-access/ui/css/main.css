@@ -1,16 +1,28 @@
 :root {
-  --loc-primary: #0076AD;
-  --loc-primary-accent: #F05129;
-  --loc-primary-darker: #002347;
-  --text: rgb(15, 15, 15);
-  --text-inverted: #F6F6F6;
+  --base-lightest: #f0f0f0;
+  --base-lighter: #dfe1e2;
+  --base-light: #a9aeb1;
+  --base: #71767a;
+  --base-dark: #565c65;
+  --base-darker: #3d4551;
+  --base-darkest: #1b1b1b;
+  --primary-lighter: #d9e8f6;
+  --primary-light: #73b3e7;
+  --primary: #005ea2;
+  --primary-dark: #1a4480;
+  --primary-darker: #162e51;
+  --error-lighter: #f8dfe2;
+  --error-light: #f2938c;
+  --error: #d83933;
+  --error-dark: #b50909;
+  --error-darker: #8b0a03;
+  --success-lighter: #d9f6d9;
+  --success-light: #75e773;
+  --success: #08a200;
+  --success-dark: #1a8024;
+  --success-darker: #16511d;
   --notice-light: #fff698;
   --notice-dark: #beb86b;
-  --error-light: #e7abab;
-  --error-dark: #c54747;
-  --success-light: #b9e7ab;
-  --success-dark: #75b861;
-  --success-inverse: #099910;
 }
 @keyframes dots {
   0%, 20% {
@@ -32,7 +44,7 @@
 html {
   font-family: sans-serif;
   font-size: 16px;
-  color: black;
+  color: var(--base-darkest);
 }
 body {
   line-height: 1.4;
@@ -40,14 +52,14 @@ body {
   padding: 0;
 }
 a {
-  color: var(--loc-primary);
+  color: var(--primary);
 }
 a:hover {
-  color: var(--loc-primary-darker);
+  color: var(--primary-darker);
 }
 button {
-  color: var(--text-inverted);
-  background: var(--loc-primary);
+  color: var(--base-lightest);
+  background: var(--primary);
   border: none;
   padding: 6px 12px;
   margin: 0 6px 6px 0;
@@ -58,7 +70,7 @@ button {
   border-radius: 3px;
 }
 button:hover {
-  background: var(--loc-primary-darker);
+  background: var(--primary-dark);
 }
 table {
   border-collapse: collapse;
@@ -69,7 +81,7 @@ td, th {
   border-right: 1px solid rgba(0, 0, 0, 0.33);
 }
 td {
-  border-bottom: 2px solid black;
+  border-bottom: 2px solid var(--base-darkest);
 }
 td:last-child,
 th:last-child {
@@ -78,8 +90,8 @@ th:last-child {
 thead th {
   font-weight: bold;
   text-align: left;
-  background-color: var(--text);
-  color: var(--text-inverted);
+  background-color: var(--base-darkest);
+  color: var(--base-lightest);
   position: sticky;
   top: 0;
   border-right: 1px solid rgba(255, 255, 255, 0.33);
@@ -93,12 +105,12 @@ thead th {
   box-sizing: border-box;
 }
 .message.error {
-  background-color: var(--error-light);
-  border-color: var(--error-dark);
+  background-color: var(--error-lighter);
+  border-color: var(--error);
 }
 .message.success {
-  background-color: var(--success-light);
-  border-color: var(--success-dark);
+  background-color: var(--success-lighter);
+  border-color: var(--success);
 }
 
 .queue-table {
@@ -108,8 +120,8 @@ thead th {
   white-space: nowrap;
 }
 .queue-table .title a .facet {
-  color: var(--text-inverted);
-  background: var(--loc-primary);
+  color: var(--base-lightest);
+  background: var(--primary-dark);
   display: inline-block;
   vertical-align: middle;
   font-size: 0.8rem;
@@ -119,7 +131,7 @@ thead th {
   border-radius: 2px;
 }
 .queue-table .title a:hover .facet {
-  background-color: var(--loc-primary-darker);
+  background-color: var(--primary-darker);
 }
 .queue-table .actions button {
   padding: 0;
@@ -147,6 +159,10 @@ thead th {
 }
 .queue-actions button {
   margin-bottom: 0;
+  background-color: var(--success-dark);
+}
+.queue-actions button:hover {
+  background-color: var(--success-darker);
 }
 .queue-options {
   text-align: center;
@@ -159,13 +175,16 @@ thead th {
   width: 100%;
   box-sizing: border-box;
   padding: 6px;
-  background: black;
+  background: var(--base-darkest);
   color: white;
   font-size: 0.9rem;
   font-family: 'Courier New', Courier, monospace;
   max-height: 300px;
   overflow: hidden;
   overflow-y: auto;
+}
+.queue-status p {
+  margin: 2px 0 0 0;
 }
 
 .visually-hidden {

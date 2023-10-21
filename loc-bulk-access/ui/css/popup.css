@@ -22,7 +22,7 @@ button.button.active {
 }
 
 button.add-queue-button.added {
-  background-color: var(--success-inverse);
+  background-color: var(--success-dark);
   cursor: default;
 }
 button.button span.number {
