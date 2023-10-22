@@ -51,18 +51,28 @@ class BulkAccess {
   }
 
   addQueueListeners() {
+    // Listener for dynamic rows
     const { queueContainer } = this;
     queueContainer.onclick = (e) => {
       const removeItem = e.target.closest('.remove-item');
       const moveItemUp = e.target.closest('.move-item-up');
       const moveItemDown = e.target.closest('.move-item-down');
+      const selectItem = e.target.closest('.select-item');
       if (removeItem) {
         this.removeQueueItem(parseInt(removeItem.getAttribute('data-index'), 10));
       } else if (moveItemUp) {
         this.moveQueueItem(parseInt(moveItemUp.getAttribute('data-index'), 10), -1);
       } else if (moveItemDown) {
         this.moveQueueItem(parseInt(moveItemDown.getAttribute('data-index'), 10), 1);
+      } else if (selectItem) {
+        this.selectQueueItem(parseInt(selectItem.getAttribute('data-index'), 10), selectItem.checked);
       }
+    };
+
+    // Listen for select all/none
+    const selectAllCheckbox = document.getElementById('select-all');
+    selectAllCheckbox.onclick = (e) => {
+      this.selectAll(selectAllCheckbox.checked);
     };
   }
 
@@ -81,10 +91,11 @@ class BulkAccess {
       // add to queue
       this.queue.push({
         status: 'queued',
+        selected: true,
         time: Date.now(),
         item,
       });
-      this.saveQueue().then(() => {
+      this.saveState().then(() => {
         resolve();
       // set failed
       }, (error) => {
@@ -141,13 +152,11 @@ class BulkAccess {
   }
 
   moveQueueItem(index, amount) {
-    console.log(index + amount);
     const newIndex = Math.max(Math.min(index + amount, this.queue.length - 1), 0);
-    console.log(index, newIndex);
     if (newIndex === index) return;
     const [item] = this.queue.splice(index, 1);
     this.queue.splice(newIndex, 0, item);
-    this.saveQueue();
+    this.saveState();
     this.renderQueue();
   }
 
@@ -204,7 +213,7 @@ class BulkAccess {
 
   removeQueueItem(queueIndex) {
     this.queue.splice(queueIndex, 1);
-    this.saveQueue();
+    this.saveState();
     this.renderQueue();
   }
 
@@ -215,10 +224,11 @@ class BulkAccess {
       const { item } = qitem;
       const facetsString = 'facets' in item && item.facets.length > 0 ? item.facets.map((f) => `<span class="facet">${f}</span>`).join('') : '';
       const title = facetsString.length > 0 ? `${item.title} ${facetsString}` : item.title;
+      const selectedString = 'selected' in qitem && qitem.selected === true ? ' checked' : '';
       html += '<tr>';
       html += '<td>';
       html += `  <label for="select-item-${index}" class="visually-hidden">Select this item</label>`;
-      html += `  <input id="select-item-${index}" type="checkbox" class="select-item" checked data-index="${index}" `;
+      html += `  <input id="select-item-${index}" type="checkbox" class="select-item"${selectedString} data-index="${index}" `;
       html += '</td>';
       html += `<td class="type type-${item.type}">${item.type}</td>`;
       html += `<td class="title"><a href="${item.url}" target="_blank">${title}</a></td>`;
@@ -234,8 +244,29 @@ class BulkAccess {
     queueContainer.innerHTML = html;
   }
 
-  saveQueue() {
+  saveState() {
     return this.browser.storage.local.set({ queue: this.queue });
+  }
+
+  selectAll(isChecked) {
+    const checkboxes = document.querySelectorAll('.select-item');
+    if (checkboxes.length === 0) return;
+    let isChanged = false;
+    checkboxes.forEach((el) => {
+      const checkbox = el;
+      if (checkbox.checked !== isChecked) {
+        checkbox.checked = isChecked;
+        isChanged = true;
+      }
+      const index = parseInt(el.getAttribute('data-index'), 10);
+      this.queue[index].selected = true;
+    });
+    if (isChanged) this.saveState();
+  }
+
+  selectQueueItem(index, isSelected) {
+    this.queue[index].selected = isSelected;
+    this.saveState();
   }
 
   showQueueButton() {
