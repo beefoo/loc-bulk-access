@@ -177,7 +177,7 @@ class BulkAccess {
         this.currentQueueItem = resp;
         this.addToQueueEl.classList.add('active');
         // check if url is already in queue
-        const exists = queue.find((qitem) => qitem.url === resp.url);
+        const exists = queue.find((qitem) => qitem.item.url === resp.url);
         if (exists) this.onAddedToQueue();
       }, (error) => {
         this.message(error, 'error');
