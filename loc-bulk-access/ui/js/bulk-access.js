@@ -13,7 +13,14 @@ class BulkAccess {
     this.browser = this.options.browser === 'chrome' ? chrome : browser;
     this.el = document.getElementById('main');
     this.messageEl = document.getElementById('message');
-    this.queue = [];
+    this.defaultState = {
+      queue: [],
+      options: {
+        downloadOption: 'data',
+        assetSize: 'smallest',
+      },
+    };
+    this.state = this.defaultState;
   }
 
   addPopupListeners() {
@@ -74,6 +81,19 @@ class BulkAccess {
     selectAllCheckbox.onclick = (e) => {
       this.selectAll(selectAllCheckbox.checked);
     };
+
+    // listen for options toggles
+    const toggles = document.querySelectorAll('.toggle');
+    toggles.forEach((toggle) => {
+      const t = toggle;
+      const target = document.getElementById(t.getAttribute('data-target'));
+      const toggleAction = t.getAttribute('data-toggle');
+      t.onclick = (e) => {
+        const isChecked = toggle.checked;
+        if (isChecked && toggleAction === 'on') target.classList.add('active');
+        else target.classList.remove('active');
+      };
+    });
   }
 
   addToQueue(item) {
@@ -83,13 +103,13 @@ class BulkAccess {
         return;
       }
       // check if URL already is queued
-      const exists = this.queue.find((qitem) => qitem.url === item.url);
+      const exists = this.state.queue.find((qitem) => qitem.url === item.url);
       if (exists) {
         reject(new Error('URL is already in queue'));
         return;
       }
       // add to queue
-      this.queue.push({
+      this.state.queue.push({
         status: 'queued',
         selected: true,
         time: Date.now(),
@@ -99,7 +119,7 @@ class BulkAccess {
         resolve();
       // set failed
       }, (error) => {
-        this.queue.pop();
+        this.state.queue.pop();
         reject(new Error(error));
       });
     });
@@ -140,8 +160,8 @@ class BulkAccess {
     window.close();
   }
 
-  loadQueue() {
-    return Utilities.storageGet(this.browser, 'queue', []);
+  loadState() {
+    return Utilities.storageGet(this.browser, 'state', this.defaultState);
   }
 
   message(text, type = 'notice') {
@@ -152,10 +172,10 @@ class BulkAccess {
   }
 
   moveQueueItem(index, amount) {
-    const newIndex = Math.max(Math.min(index + amount, this.queue.length - 1), 0);
+    const newIndex = Math.max(Math.min(index + amount, this.state.queue.length - 1), 0);
     if (newIndex === index) return;
-    const [item] = this.queue.splice(index, 1);
-    this.queue.splice(newIndex, 0, item);
+    const [item] = this.state.queue.splice(index, 1);
+    this.state.queue.splice(newIndex, 0, item);
     this.saveState();
     this.renderQueue();
   }
@@ -177,21 +197,21 @@ class BulkAccess {
 
     // retrieve current tab and queue
     const tabsPromise = this.browser.tabs.query({ active: true, currentWindow: true });
-    const queuePromise = this.loadQueue();
-    Promise.all([tabsPromise, queuePromise]).then((values) => {
-      const [tabs, queue] = values;
-      this.queue = queue;
+    const statePromise = this.loadState();
+    Promise.all([tabsPromise, statePromise]).then((values) => {
+      const [tabs, state] = values;
+      this.state = state;
       this.checkURL(tabs[0].url).then((resp) => {
         this.message(resp.message, 'success');
         this.currentQueueItem = resp;
         this.addToQueueEl.classList.add('active');
         // check if url is already in queue
-        const exists = queue.find((qitem) => qitem.item.url === resp.url);
+        const exists = state.queue.find((qitem) => qitem.item.url === resp.url);
         if (exists) this.onAddedToQueue();
       }, (error) => {
         this.message(error, 'error');
       });
-      if (this.queue.length > 0) this.showQueueButton();
+      if (this.state.queue.length > 0) this.showQueueButton();
       else this.viewQueueEl.classList.remove('active');
     });
   }
@@ -201,10 +221,10 @@ class BulkAccess {
     this.addQueueListeners();
     // retrieve current tab and queue
     const tabsPromise = this.browser.tabs.query({ active: true, currentWindow: true });
-    const queuePromise = this.loadQueue();
-    Promise.all([tabsPromise, queuePromise]).then((values) => {
-      const [tabs, queue] = values;
-      this.queue = queue;
+    const statePromise = this.loadState();
+    Promise.all([tabsPromise, statePromise]).then((values) => {
+      const [tabs, state] = values;
+      this.state = state;
       const { url } = tabs[0];
       this.browser.storage.local.set({ queuePageURL: url });
       this.renderQueue();
@@ -212,7 +232,7 @@ class BulkAccess {
   }
 
   removeQueueItem(queueIndex) {
-    this.queue.splice(queueIndex, 1);
+    this.state.queue.splice(queueIndex, 1);
     this.saveState();
     this.renderQueue();
   }
@@ -220,7 +240,7 @@ class BulkAccess {
   renderQueue() {
     const { queueContainer } = this;
     let html = '';
-    this.queue.forEach((qitem, index) => {
+    this.state.queue.forEach((qitem, index) => {
       const { item } = qitem;
       const facetsString = 'facets' in item && item.facets.length > 0 ? item.facets.map((f) => `<span class="facet">${f}</span>`).join('') : '';
       const title = facetsString.length > 0 ? `${item.title} ${facetsString}` : item.title;
@@ -245,7 +265,7 @@ class BulkAccess {
   }
 
   saveState() {
-    return this.browser.storage.local.set({ queue: this.queue });
+    return this.browser.storage.local.set({ state: this.state });
   }
 
   selectAll(isChecked) {
@@ -259,19 +279,19 @@ class BulkAccess {
         isChanged = true;
       }
       const index = parseInt(el.getAttribute('data-index'), 10);
-      this.queue[index].selected = true;
+      this.state.queue[index].selected = true;
     });
     if (isChanged) this.saveState();
   }
 
   selectQueueItem(index, isSelected) {
-    this.queue[index].selected = isSelected;
+    this.state.queue[index].selected = isSelected;
     this.saveState();
   }
 
   showQueueButton() {
     const { viewQueueEl } = this;
-    viewQueueEl.innerHTML = `View queue <span class="number">${this.queue.length}</span>`;
+    viewQueueEl.innerHTML = `View queue <span class="number">${this.state.queue.length}</span>`;
     viewQueueEl.classList.add('active');
   }
 }
