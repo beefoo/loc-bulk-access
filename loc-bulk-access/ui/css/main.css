@@ -153,24 +153,43 @@ thead th {
   box-sizing: border-box;
   padding: 6px;
   background: #eee;
+  justify-content: flex-end;
+  align-items: stretch;
 }
 .queue-actions {
-  text-align: center;
+  display: flex;
+  padding: 3px 3px 3px 12px;
 }
 .queue-actions button {
   margin-bottom: 0;
   background-color: var(--success-dark);
+  font-size: 1.33rem;
 }
 .queue-actions button:hover {
   background-color: var(--success-darker);
 }
-.queue-options {
-  text-align: center;
+.queue-options fieldset {
+  display: inline-block;
+  padding: 0 3px;
+  margin: 6px;
+  border: 1px solid var(--base-light);
 }
 .queue-options label {
   display: inline-block;
-  margin: 6px;
+  margin: 3px 3px 3px 0;
 }
+.queue-options legend {
+  font-size: 0.9rem;
+  margin-left: 6px;
+  color: var(--base-darker);
+}
+fieldset.toggle-target {
+  display: none;
+}
+fieldset.toggle-target.active {
+  display: inline-block;
+}
+
 .queue-status {
   width: 100%;
   box-sizing: border-box;

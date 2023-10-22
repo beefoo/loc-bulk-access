@@ -26,18 +26,40 @@
     </table>
     <div class="queue-toolbar">
       <div class="queue-menu">
+        <div class="queue-options">
+          <fieldset id="download-option-fieldset">
+            <legend>What would you like to download?</legend>
+            <label for="download-option-data">
+              <input id="download-option-data" name="download-option" type="radio" value="data" class="toggle" data-toggle="#asset-size-fieldset" data-toggle-off checked />
+              Just the data
+            </label>
+            <label for="download-option-assets">
+              <input id="download-option-assets" name="download-option" type="radio" value="assets" class="toggle" data-toggle="#asset-size-fieldset" data-toggle-on />
+              Just the assets
+            </label>
+            <label for="download-option-both">
+              <input id="download-option-both" name="download-option" type="radio" value="both" class="toggle" data-toggle="#asset-size-fieldset" data-toggle-on />
+              Both
+            </label>
+          </fieldset>
+          <fieldset id="asset-size-fieldset" class="toggle-target">
+            <legend>Asset size</legend>
+            <label for="asset-size-smallest">
+              <input id="asset-size-smallest" name="asset-size" type="radio" value="smallest" checked />
+              Smallest
+            </label>
+            <label for="asset-size-medium">
+              <input id="asset-size-medium" name="asset-size" type="radio" value="medium" />
+              Medium
+            </label>
+            <label for="asset-size-largest">
+              <input id="asset-size-largest" name="asset-size" type="radio" value="largest" />
+              Largest
+            </label>
+          </fieldset>
+        </div>
         <div class="queue-actions">
           <button class="toggle">Start queue</button>
-        </div>
-        <div class="queue-options">
-          <label for="include-data-checkbox">
-            <input id="include-data-checkbox" name="include-data" type="checkbox" checked />
-            Download data?
-          </label>
-          <label for="include-assets-checkbox">
-            <input id="include-assets-checkbox" name="include-assets" type="checkbox" />
-            Download assets?
-          </label>
         </div>
       </div>
       <div class="queue-status">
