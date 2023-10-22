@@ -43,6 +43,7 @@ class BulkAccess {
             if (tabs.length > 0) {
               const [tab] = tabs;
               this.browser.tabs.update(tab.id, { active: true });
+              this.browser.tabs.reload(tab.id);
               window.close();
             } else {
               this.createTab(queuePageURL);
