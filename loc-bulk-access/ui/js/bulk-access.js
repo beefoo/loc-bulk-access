@@ -15,7 +15,7 @@ class BulkAccess {
     this.messageEl = document.getElementById('message');
     this.defaultState = {
       queue: [],
-      options: {
+      settings: {
         downloadOption: 'data',
         assetSize: 'smallest',
       },
@@ -83,17 +83,10 @@ class BulkAccess {
       this.selectAll(selectAllCheckbox.checked);
     };
 
-    // listen for options toggles
-    const toggles = document.querySelectorAll('.toggle');
-    toggles.forEach((toggle) => {
-      const t = toggle;
-      const target = document.getElementById(t.getAttribute('data-target'));
-      const toggleAction = t.getAttribute('data-toggle');
-      t.onclick = (e) => {
-        const isChecked = toggle.checked;
-        if (isChecked && toggleAction === 'on') target.classList.add('active');
-        else target.classList.remove('active');
-      };
+    // listen for settings options
+    const settingOptions = document.querySelectorAll('.settings-option');
+    settingOptions.forEach((option) => {
+      this.setSettingOptionListeners(option);
     });
   }
 
@@ -229,6 +222,7 @@ class BulkAccess {
       const { url } = tabs[0];
       this.browser.storage.local.set({ queuePageURL: url });
       this.renderQueue();
+      this.renderSettings();
     });
   }
 
@@ -265,6 +259,24 @@ class BulkAccess {
     queueContainer.innerHTML = html;
   }
 
+  renderSettings() {
+    if (!('settings' in this.state)) return;
+    const { settings } = this.state;
+    Object.entries(settings).forEach((setting) => {
+      const [key, value] = setting;
+      const options = document.querySelectorAll(`input[name="${key}"]`);
+      options.forEach((option) => {
+        const optionRef = option;
+        const optionVal = option.getAttribute('value');
+        const isChecked = (optionVal === value);
+        optionRef.checked = isChecked;
+        if (option.classList.contains('toggle') && isChecked) {
+          this.constructor.toggle(optionRef);
+        }
+      });
+    });
+  }
+
   saveState() {
     return this.browser.storage.local.set({ state: this.state });
   }
@@ -290,9 +302,37 @@ class BulkAccess {
     this.saveState();
   }
 
+  setSettingOptionListeners(option) {
+    const opt = option;
+    const name = opt.getAttribute('name');
+    const value = opt.getAttribute('value');
+    opt.onclick = (e) => {
+      const isChecked = opt.checked;
+
+      // update settings
+      if (isChecked) {
+        this.state.settings[name] = value;
+        this.saveState();
+      }
+
+      // check if this is a toggler
+      if (opt.classList.contains('toggle')) {
+        this.constructor.toggle(opt);
+      }
+    };
+  }
+
   showQueueButton() {
     const { viewQueueEl } = this;
     viewQueueEl.innerHTML = `View queue <span class="number">${this.state.queue.length}</span>`;
     viewQueueEl.classList.add('active');
+  }
+
+  static toggle(option) {
+    const isChecked = option.checked;
+    const toggleAction = option.getAttribute('data-toggle');
+    const target = document.getElementById(option.getAttribute('data-target'));
+    if (isChecked && toggleAction === 'on') target.classList.add('active');
+    else target.classList.remove('active');
   }
 }
