@@ -180,6 +180,7 @@ class BulkAccess {
     addToQueueEl.innerHTML = '✓ Added to queue';
     addToQueueEl.disabled = true;
     this.showQueueButton();
+    this.setBadgeText(this.state.queue.length);
   }
 
   onPopup() {
@@ -210,8 +211,16 @@ class BulkAccess {
     });
   }
 
+  onStartup() {
+    const statePromise = this.loadState();
+    statePromise.then((state) => {
+      this.setBadgeText(state.queue.length);
+    });
+  }
+
   onViewQueue() {
     this.queueContainer = document.getElementById('queue-tbody');
+    this.toggleQueueButton = document.getElementById('toggle-queue');
     this.addQueueListeners();
     // retrieve current tab and queue
     const tabsPromise = this.browser.tabs.query({ active: true, currentWindow: true });
@@ -233,9 +242,11 @@ class BulkAccess {
   }
 
   renderQueue() {
-    const { queueContainer } = this;
+    const { queueContainer, toggleQueueButton } = this;
+    const { queue } = this.state;
     let html = '';
-    this.state.queue.forEach((qitem, index) => {
+    let queueButtonText = 'Start queue';
+    queue.forEach((qitem, index) => {
       const { item } = qitem;
       const facetsString = 'facets' in item && item.facets.length > 0 ? item.facets.map((f) => `<span class="facet">${f}</span>`).join('') : '';
       const title = facetsString.length > 0 ? `${item.title} ${facetsString}` : item.title;
@@ -255,8 +266,12 @@ class BulkAccess {
       html += `  <button class="remove-item" data-index="${index}" title="Remove from queue"><span class="visually-hidden">remove</span>×</button>`;
       html += '</td>';
       html += '</tr>';
+      if (qitem.status === 'in progress') queueButtonText = 'Pause queue';
+      else if (qitem.status !== 'queued' && queueButtonText !== 'Pause queue') queueButtonText = 'Resume queue';
     });
     queueContainer.innerHTML = html;
+    toggleQueueButton.innerText = queueButtonText;
+    this.setBadgeText(queue.length);
   }
 
   renderSettings() {
@@ -300,6 +315,11 @@ class BulkAccess {
   selectQueueItem(index, isSelected) {
     this.state.queue[index].selected = isSelected;
     this.saveState();
+  }
+
+  setBadgeText(count) {
+    const text = count > 0 ? count.toLocaleString() : '+';
+    this.browser.browserAction.setBadgeText({ text });
   }
 
   setSettingOptionListeners(option) {
