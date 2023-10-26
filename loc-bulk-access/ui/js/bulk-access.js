@@ -59,8 +59,9 @@ class BulkAccess {
   }
 
   addQueueListeners() {
+    const { queueContainer, toggleQueueButton } = this;
+
     // Listener for dynamic rows
-    const { queueContainer } = this;
     queueContainer.onclick = (e) => {
       const removeItem = e.target.closest('.remove-item');
       const moveItemUp = e.target.closest('.move-item-up');
@@ -88,6 +89,11 @@ class BulkAccess {
     settingOptions.forEach((option) => {
       this.setSettingOptionListeners(option);
     });
+
+    // toggle queue start
+    toggleQueueButton.onclick = (e) => {
+      this.toggleQueue();
+    };
   }
 
   addToQueue(item) {
@@ -286,7 +292,7 @@ class BulkAccess {
         const isChecked = (optionVal === value);
         optionRef.checked = isChecked;
         if (option.classList.contains('toggle') && isChecked) {
-          this.constructor.toggle(optionRef);
+          this.constructor.toggleOption(optionRef);
         }
       });
     });
@@ -337,7 +343,7 @@ class BulkAccess {
 
       // check if this is a toggler
       if (opt.classList.contains('toggle')) {
-        this.constructor.toggle(opt);
+        this.constructor.toggleOption(opt);
       }
     };
   }
@@ -348,11 +354,17 @@ class BulkAccess {
     viewQueueEl.classList.add('active');
   }
 
-  static toggle(option) {
+  static toggleOption(option) {
     const isChecked = option.checked;
     const toggleAction = option.getAttribute('data-toggle');
     const target = document.getElementById(option.getAttribute('data-target'));
     if (isChecked && toggleAction === 'on') target.classList.add('active');
     else target.classList.remove('active');
+  }
+
+  toggleQueue() {
+    const { toggleQueueButton } = this;
+    const { queue, settings } = this.state;
+    toggleQueueButton.disabled = true;
   }
 }
