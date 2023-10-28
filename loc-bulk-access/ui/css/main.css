@@ -190,7 +190,7 @@ fieldset.toggle-target.active {
   display: inline-block;
 }
 
-.queue-status {
+.queue-log {
   width: 100%;
   box-sizing: border-box;
   padding: 6px;
@@ -202,8 +202,25 @@ fieldset.toggle-target.active {
   overflow: hidden;
   overflow-y: auto;
 }
-.queue-status p {
+.queue-log p {
   margin: 2px 0 0 0;
+}
+.queue-log p .time {
+  font-style: italic;
+  color: var(--base-light);
+  font-size: 0.9rem;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 3px;
+}
+.queue-log p.success {
+  color: var(--success-light);
+}
+.queue-log p.error {
+  color: var(--error-light);
+}
+.queue-log p.notice {
+  color: var(--notice-light);
 }
 
 .visually-hidden {

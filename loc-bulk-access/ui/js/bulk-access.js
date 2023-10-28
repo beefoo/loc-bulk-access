@@ -14,6 +14,7 @@ class BulkAccess {
     this.el = document.getElementById('main');
     this.messageEl = document.getElementById('message');
     this.defaultState = {
+      log: [],
       queue: [],
       settings: {
         downloadOption: 'data',
@@ -227,6 +228,7 @@ class BulkAccess {
   onViewQueue() {
     this.queueContainer = document.getElementById('queue-tbody');
     this.toggleQueueButton = document.getElementById('toggle-queue');
+    this.logContainer = document.getElementById('queue-log');
     this.addQueueListeners();
     // retrieve current tab and queue
     const tabsPromise = this.browser.tabs.query({ active: true, currentWindow: true });
@@ -238,6 +240,7 @@ class BulkAccess {
       this.browser.storage.local.set({ queuePageURL: url });
       this.renderQueue();
       this.renderSettings();
+      this.renderLog();
     });
   }
 
@@ -245,6 +248,20 @@ class BulkAccess {
     this.state.queue.splice(queueIndex, 1);
     this.saveState();
     this.renderQueue();
+  }
+
+  renderLog() {
+    const { logContainer } = this;
+    const { log } = this.state;
+    let html = '';
+    log.forEach((message) => {
+      const { type, time, text } = message;
+      html += `<p class="log-message ${type}">`;
+      html += `<span class="time">${time}</span>`;
+      html += `<span class="text">${text}</span>`;
+      html += '</p>';
+    });
+    logContainer.innerHTML = html;
   }
 
   renderQueue() {
