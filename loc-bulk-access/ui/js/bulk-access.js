@@ -168,7 +168,10 @@ class BulkAccess {
       Utilities.storageGet(this.browser, 'state', this.defaultState).then((stateData) => {
         // make sure state has all the keys in default state
         const defaultState = structuredClone(this.defaultState);
+        const defaultSettings = structuredClone(this.defaultState.settings);
         const state = Object.assign(defaultState, stateData);
+        const settings = Object.assign(defaultSettings, state.settings);
+        state.settings = settings;
         resolve(state);
       }, (error) => {
         reject(error);
