@@ -164,7 +164,16 @@ class BulkAccess {
   }
 
   loadState() {
-    return Utilities.storageGet(this.browser, 'state', this.defaultState);
+    return new Promise((resolve, reject) => {
+      Utilities.storageGet(this.browser, 'state', this.defaultState).then((stateData) => {
+        // make sure state has all the keys in default state
+        const defaultState = structuredClone(this.defaultState);
+        const state = Object.assign(defaultState, stateData);
+        resolve(state);
+      }, (error) => {
+        reject(error);
+      });
+    });
   }
 
   message(text, type = 'notice') {
