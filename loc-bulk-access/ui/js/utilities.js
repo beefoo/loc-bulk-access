@@ -11,6 +11,15 @@ class Utilities {
     return newURL;
   }
 
+  static parseQueryString(queryString) {
+    const result = {};
+    queryString.split('&').forEach((part) => {
+      const [key, value] = part.split('=');
+      result[key] = value;
+    });
+    return result;
+  }
+
   static storageGet(api, key, defaultValue) {
     return new Promise((resolve, reject) => {
       const obj = {};

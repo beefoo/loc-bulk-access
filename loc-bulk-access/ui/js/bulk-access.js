@@ -18,6 +18,7 @@ class BulkAccess {
       log: [],
       queue: [],
       settings: {
+        dataFormat: 'csv',
         downloadOption: 'data',
         assetSize: 'smallest',
       },
@@ -374,10 +375,12 @@ class BulkAccess {
 
   static toggleOption(option) {
     const isChecked = option.checked;
-    const toggleAction = option.getAttribute('data-toggle');
-    const target = document.getElementById(option.getAttribute('data-target'));
-    if (isChecked && toggleAction === 'on') target.classList.add('active');
-    else target.classList.remove('active');
+    const toggleActions = Utilities.parseQueryString(option.getAttribute('data-toggle'));
+    Object.entries(toggleActions).forEach(([id, toggleAction]) => {
+      const target = document.getElementById(id);
+      if (isChecked && toggleAction === 'on') target.classList.add('active');
+      else target.classList.remove('active');
+    });
   }
 
   toggleQueue() {
