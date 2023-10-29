@@ -40,8 +40,10 @@ const apiResponseValidator = (apiResponse) => {
 };
 
 // function for creating an API URL based on current URL
-const getAPIURL = (url) => {
+const getAPIURL = (url, count = false) => {
   const urlPattern = /https?:\/\/.*\.loc\.gov\/.*/i;
-  if (urlPattern.test(url)) return Utilities.appendParamsToURL(url, { fo: 'json', c: 150 });
+  const params = { fo: 'json' };
+  if (count !== false) params.c = count;
+  if (urlPattern.test(url)) return Utilities.appendParamsToURL(url, params);
   return false;
 };

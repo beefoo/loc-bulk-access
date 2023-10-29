@@ -1,9 +1,10 @@
 class BulkAccess {
   constructor(options = {}) {
     const defaults = {
-      browser: 'firefox',
+      apiItemsPerPage: 150,
       apiResponseValidator: (apiResponse) => ({ valid: false, type: 'Unknown', count: 0 }),
-      getAPIURL: (url) => url,
+      browser: 'firefox',
+      getAPIURL: (url, count = false) => url,
     };
     this.options = Object.assign(defaults, options);
     this.init();
@@ -139,7 +140,7 @@ class BulkAccess {
             el.classList.remove('is-loading');
             if (resp.valid) {
               resp.url = url;
-              resp.apiURL = apiURL;
+              resp.apiURL = this.options.getAPIURL(url, this.options.apiItemsPerPage);
               resolve(resp);
             } else {
               reject(validator.message);
