@@ -168,6 +168,10 @@ thead th {
 .queue-actions button:hover {
   background-color: var(--success-darker);
 }
+.queue-actions button:disabled {
+  background-color: var(--base-dark);
+  cursor: default;
+}
 .queue-options fieldset {
   display: inline-block;
   padding: 0 3px;

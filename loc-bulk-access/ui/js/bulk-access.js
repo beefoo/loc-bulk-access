@@ -5,6 +5,13 @@ class BulkAccess {
       apiResponseValidator: (apiResponse) => ({ valid: false, type: 'Unknown', count: 0 }),
       browser: 'firefox',
       getAPIURL: (url, count = false) => url,
+      queueItemStatuses: [
+        'queued',
+        'downloading data',
+        'downloading assets',
+        'completed',
+        'completed with errors',
+      ],
     };
     this.options = Object.assign(defaults, options);
     this.init();
@@ -255,6 +262,7 @@ class BulkAccess {
       this.renderQueue();
       this.renderSettings();
       this.renderLog();
+      this.renderQueueButton();
     });
   }
 
@@ -262,6 +270,7 @@ class BulkAccess {
     this.state.queue.splice(queueIndex, 1);
     this.saveState();
     this.renderQueue();
+    this.renderQueueButton();
   }
 
   renderLog() {
@@ -279,10 +288,9 @@ class BulkAccess {
   }
 
   renderQueue() {
-    const { queueContainer, toggleQueueButton } = this;
+    const { queueContainer } = this;
     const { queue } = this.state;
     let html = '';
-    let queueButtonText = 'Start queue';
     queue.forEach((qitem, index) => {
       const { item } = qitem;
       const facetsString = 'facets' in item && item.facets.length > 0 ? item.facets.map((f) => `<span class="facet">${f}</span>`).join('') : '';
@@ -296,19 +304,29 @@ class BulkAccess {
       html += `<td class="type type-${item.type}">${item.type}</td>`;
       html += `<td class="title"><a href="${item.url}" target="_blank">${title}</a></td>`;
       html += `<td class="count">${item.countF}</td>`;
-      html += `<td class="status type-${qitem.status}">${qitem.status}</td>`;
+      html += `<td class="status type-${qitem.status.replaceAll(' ', '-')}">${qitem.status}</td>`;
       html += '<td class="actions">';
       html += `  <button class="move-item-up" data-index="${index}" title="Move up in queue"><span class="visually-hidden">move up</span>🠹</button>`;
       html += `  <button class="move-item-down" data-index="${index}" title="Move down in queue"><span class="visually-hidden">move down</span>🠻</button>`;
       html += `  <button class="remove-item" data-index="${index}" title="Remove from queue"><span class="visually-hidden">remove</span>×</button>`;
       html += '</td>';
       html += '</tr>';
-      if (qitem.status === 'in progress') queueButtonText = 'Pause queue';
-      else if (qitem.status !== 'queued' && queueButtonText !== 'Pause queue') queueButtonText = 'Resume queue';
     });
     queueContainer.innerHTML = html;
-    toggleQueueButton.innerText = queueButtonText;
     this.setBadgeText(queue.length);
+  }
+
+  renderQueueButton() {
+    const { toggleQueueButton } = this;
+    const { queue } = this.state;
+    const selectedQueue = queue.filter((qitem) => qitem.selected && !qitem.status.startsWith('completed'));
+    let started = false;
+    const completed = selectedQueue.length <= 0;
+    selectedQueue.forEach((qitem, index) => {
+      if (qitem.status !== 'queued') started = true;
+    });
+    toggleQueueButton.innerText = started ? 'Resume queue' : 'Start queue';
+    toggleQueueButton.disabled = completed;
   }
 
   renderSettings() {
@@ -346,12 +364,16 @@ class BulkAccess {
       const index = parseInt(el.getAttribute('data-index'), 10);
       this.state.queue[index].selected = true;
     });
-    if (isChanged) this.saveState();
+    if (isChanged) {
+      this.saveState();
+      this.renderQueueButton();
+    }
   }
 
   selectQueueItem(index, isSelected) {
     this.state.queue[index].selected = isSelected;
     this.saveState();
+    this.renderQueueButton();
   }
 
   setBadgeText(count) {
