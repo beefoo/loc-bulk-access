@@ -43,28 +43,7 @@ class BulkAccess {
       });
     };
     this.viewQueueEl.onclick = (e) => {
-      const queuePageURL = 'queue.html';
-      Utilities.storageGet(this.browser, 'queuePageURL', queuePageURL).then((pageURL) => {
-        if (pageURL === queuePageURL) {
-          this.createTab(queuePageURL);
-        } else {
-          // check if query tab is already open
-          this.browser.tabs.query({ url: pageURL }).then((tabs) => {
-            if (tabs.length > 0) {
-              const [tab] = tabs;
-              this.browser.tabs.update(tab.id, { active: true });
-              this.browser.tabs.reload(tab.id);
-              window.close();
-            } else {
-              this.createTab(queuePageURL);
-            }
-          }, (error) => {
-            this.createTab(queuePageURL);
-          });
-        }
-      }, (error) => {
-        this.createTab(queuePageURL);
-      });
+      this.openQueuePage();
     };
   }
 
@@ -104,6 +83,13 @@ class BulkAccess {
     toggleQueueButton.onclick = (e) => {
       this.toggleQueue();
     };
+
+    // if this tab becomes active, refresh
+    this.browser.tabs.onActivated.addListener((activeInfo) => {
+      if (activeInfo.tabId === this.tabId) {
+        this.browser.tabs.reload(this.tabId);
+      }
+    });
   }
 
   addToQueue(item) {
@@ -216,8 +202,6 @@ class BulkAccess {
     this.viewQueueEl = document.getElementById('view-queue-button');
     this.currentQueueItem = false;
 
-    this.addPopupListeners();
-
     // retrieve current tab and queue
     const tabsPromise = this.browser.tabs.query({ active: true, currentWindow: true });
     const statePromise = this.loadState();
@@ -236,6 +220,7 @@ class BulkAccess {
       });
       if (this.state.queue.length > 0) this.showQueueButton();
       else this.viewQueueEl.classList.remove('active');
+      this.addPopupListeners();
     });
   }
 
@@ -250,19 +235,49 @@ class BulkAccess {
     this.queueContainer = document.getElementById('queue-tbody');
     this.toggleQueueButton = document.getElementById('toggle-queue');
     this.logContainer = document.getElementById('queue-log');
-    this.addQueueListeners();
     // retrieve current tab and queue
     const tabsPromise = this.browser.tabs.query({ active: true, currentWindow: true });
     const statePromise = this.loadState();
     Promise.all([tabsPromise, statePromise]).then((values) => {
       const [tabs, state] = values;
       this.state = state;
-      const { url } = tabs[0];
-      this.browser.storage.local.set({ queuePageURL: url });
+      const { url, id } = tabs[0];
+      this.browser.storage.local.set({ queuePage: { url, id } });
+      this.tabId = id;
       this.renderQueue();
       this.renderSettings();
       this.renderLog();
       this.renderQueueButton();
+      this.addQueueListeners();
+    });
+  }
+
+  openQueuePage() {
+    const queuePageURL = 'queue.html';
+    const queuePage = {
+      url: queuePageURL,
+    };
+    Utilities.storageGet(this.browser, 'queuePage', queuePage).then((page) => {
+      const pageURL = page.url;
+      if (pageURL === queuePageURL) {
+        this.createTab(queuePageURL);
+      } else {
+        // check if query tab is already open
+        this.browser.tabs.query({ url: pageURL }).then((tabs) => {
+          if (tabs.length > 0) {
+            const [tab] = tabs;
+            this.browser.tabs.update(tab.id, { active: true });
+            // this.browser.tabs.reload(tab.id);
+            window.close();
+          } else {
+            this.createTab(queuePageURL);
+          }
+        }, (error) => {
+          this.createTab(queuePageURL);
+        });
+      }
+    }, (error) => {
+      this.createTab(queuePageURL);
     });
   }
 
