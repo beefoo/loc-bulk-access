@@ -14,6 +14,7 @@ class BulkAccess {
         'completed',
         'completed with errors',
       ],
+      timeBetweenRequests: 1000,
     };
     this.options = Object.assign(defaults, options);
     this.init();
@@ -389,7 +390,7 @@ class BulkAccess {
   resumeQueue() {
     this.isInProgress = true;
     const { queue, settings } = this.state;
-    const { maxDownloadAttempts, parseAPIResponse } = this.options;
+    const { maxDownloadAttempts, parseAPIResponse, timeBetweenRequests } = this.options;
     const nextActiveIndex = queue.findIndex((qitem) => this.constructor.isQueueItemActive(qitem));
     if (nextActiveIndex < 0) {
       this.pauseQueue();
@@ -456,20 +457,29 @@ class BulkAccess {
       const request = new Request(nextActiveRequest.url, { method: 'GET' });
       request.json().then((resp) => {
         const data = parseAPIResponse(resp);
+        // data successfully retrieved and parsed
         if (data !== false) {
           apiRequests[j].response = data;
           apiRequests[j].status = 'completed';
+        // error in parsing data
         } else {
           apiRequests[j].status = 'error';
           this.logMessage(`Could not parse data from ${nextActiveRequest.url} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
         }
         this.state.queue[i].apiRequests = apiRequests.slice();
         this.saveState();
+        setTimeout(() => {
+          this.resumeQueue();
+        }, timeBetweenRequests);
+      // error in the request
       }).catch((error) => {
         apiRequests[j].status = 'error';
         this.logMessage(`Coudl not retrieve data from ${nextActiveRequest.url} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
         this.state.queue[i].apiRequests = apiRequests.slice();
         this.saveState();
+        setTimeout(() => {
+          this.resumeQueue();
+        }, timeBetweenRequests);
       });
     }
   }
