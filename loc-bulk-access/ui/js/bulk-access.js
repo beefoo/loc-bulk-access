@@ -5,9 +5,11 @@ class BulkAccess {
       apiResponseValidator: (apiResponse) => ({ valid: false, type: 'Unknown', count: 0 }),
       browser: 'firefox',
       getAPIURL: (url, count = false) => url,
+      maxDownloadAttempts: 3,
+      parseAPIResponse: (apiResponse) => false,
       queueItemStatuses: [
         'queued',
-        'downloading data',
+        'downloading metadata',
         'downloading assets',
         'completed',
         'completed with errors',
@@ -156,6 +158,10 @@ class BulkAccess {
     window.close();
   }
 
+  static isQueueItemActive(qitem) {
+    return qitem.selected && !qitem.status.startsWith('completed');
+  }
+
   loadState() {
     return new Promise((resolve, reject) => {
       Utilities.storageGet(this.browser, 'state', this.defaultState).then((stateData) => {
@@ -172,6 +178,17 @@ class BulkAccess {
     });
   }
 
+  logMessage(text, type = 'notice') {
+    const time = new Date().toISOString().replace('T', ' ').replace(/\.[0-9]+Z/, ''); // YYYY-MM-DDTHH:mm:ss.sssZ
+    this.state.log.push({
+      text,
+      time,
+      type,
+    });
+    this.renderLog();
+    this.saveState();
+  }
+
   message(text, type = 'notice') {
     const { messageEl } = this;
     messageEl.classList.remove('error', 'success', 'notice');
@@ -180,6 +197,7 @@ class BulkAccess {
   }
 
   moveQueueItem(index, amount) {
+    if (this.isInProgress) return;
     const newIndex = Math.max(Math.min(index + amount, this.state.queue.length - 1), 0);
     if (newIndex === index) return;
     const [item] = this.state.queue.splice(index, 1);
@@ -232,6 +250,7 @@ class BulkAccess {
   }
 
   onViewQueue() {
+    this.isInProgress = false;
     this.queueContainer = document.getElementById('queue-tbody');
     this.toggleQueueButton = document.getElementById('toggle-queue');
     this.logContainer = document.getElementById('queue-log');
@@ -281,7 +300,12 @@ class BulkAccess {
     });
   }
 
+  pauseQueue() {
+    this.isInProgress = false;
+  }
+
   removeQueueItem(queueIndex) {
+    if (this.isInProgress) return;
     this.state.queue.splice(queueIndex, 1);
     this.saveState();
     this.renderQueue();
@@ -334,10 +358,10 @@ class BulkAccess {
   renderQueueButton() {
     const { toggleQueueButton } = this;
     const { queue } = this.state;
-    const selectedQueue = queue.filter((qitem) => qitem.selected && !qitem.status.startsWith('completed'));
+    const activeQueue = queue.filter((qitem) => this.constructor.isQueueItemActive(qitem));
     let started = false;
-    const completed = selectedQueue.length <= 0;
-    selectedQueue.forEach((qitem, index) => {
+    const completed = activeQueue.length <= 0;
+    activeQueue.forEach((qitem, index) => {
       if (qitem.status !== 'queued') started = true;
     });
     toggleQueueButton.innerText = started ? 'Resume queue' : 'Start queue';
@@ -362,11 +386,100 @@ class BulkAccess {
     });
   }
 
+  resumeQueue() {
+    this.isInProgress = true;
+    const { queue, settings } = this.state;
+    const { maxDownloadAttempts, parseAPIResponse } = this.options;
+    const nextActiveIndex = queue.findIndex((qitem) => this.constructor.isQueueItemActive(qitem));
+    if (nextActiveIndex < 0) {
+      this.pauseQueue();
+      this.renderQueueButton();
+      this.logMessage('Queue finished!', 'success');
+      return;
+    }
+    // TODO: disable qitem manipulation while in progress
+    const i = nextActiveIndex;
+    const qitem = queue[i];
+
+    // check to see if we need to download metadata
+    if (['queued', 'downloading metadata', 'metadata error'].contains(qitem.status)) {
+      const apiRequests = 'apiRequests' in qitem ? qitem.apiRequests : [];
+      // check to see if we have not yet made an API request yet
+      if (apiRequests.length === 0) {
+        apiRequests.push({
+          attempts: 0,
+          date: Date.now(),
+          index: 0,
+          response: false,
+          status: 'queued',
+          url: qitem.item.apiURL,
+        });
+      }
+      let reqCount = apiRequests.length;
+      // retrieve the next API request
+      let nextActiveRequest = apiRequests.find((req) => req.status !== 'completed');
+      // all the API requests have been completed; check to see if there are any more
+      if (nextActiveRequest === undefined) {
+        const lastRequest = apiRequests[reqCount - 1];
+        // we have completed the API Requests
+        if (lastRequest.response.isLast) {
+          this.state.queue[i].status = 'downloaded metadata';
+          this.saveState();
+          this.resumeQueue();
+          return;
+        // otherwise, queue the next one
+        }
+        apiRequests.push({
+          attempts: 0,
+          date: Date.now(),
+          index: reqCount,
+          response: false,
+          status: 'queued',
+          url: lastRequest.response.nextPageURL,
+        });
+        reqCount += 1;
+        nextActiveRequest = apiRequests[reqCount - 1];
+      }
+      const j = nextActiveRequest.index;
+      apiRequests[j].status = 'in progress';
+      apiRequests[j].attempts += 1;
+      const { attempts } = apiRequests[j];
+      // we reached too many attempts
+      if (attempts > maxDownloadAttempts) {
+        this.state.queue[i].status = 'metadata error';
+        this.saveState();
+        this.logMessage(`Reached max attempts for API request ${nextActiveRequest.url}. Stopping queue. The website might be down or we reached an data request limit. Please try again later.`, 'error');
+        this.pauseQueue();
+        return;
+      }
+      // make the Request
+      const request = new Request(nextActiveRequest.url, { method: 'GET' });
+      request.json().then((resp) => {
+        const data = parseAPIResponse(resp);
+        if (data !== false) {
+          apiRequests[j].response = data;
+          apiRequests[j].status = 'completed';
+        } else {
+          apiRequests[j].status = 'error';
+          this.logMessage(`Could not parse data from ${nextActiveRequest.url} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
+        }
+        this.state.queue[i].apiRequests = apiRequests.slice();
+        this.saveState();
+      }).catch((error) => {
+        apiRequests[j].status = 'error';
+        this.logMessage(`Coudl not retrieve data from ${nextActiveRequest.url} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
+        this.state.queue[i].apiRequests = apiRequests.slice();
+        this.saveState();
+      });
+    }
+  }
+
   saveState() {
     return this.browser.storage.local.set({ state: this.state });
   }
 
   selectAll(isChecked) {
+    if (this.isInProgress) return;
     const checkboxes = document.querySelectorAll('.select-item');
     if (checkboxes.length === 0) return;
     let isChanged = false;
@@ -386,6 +499,7 @@ class BulkAccess {
   }
 
   selectQueueItem(index, isSelected) {
+    if (this.isInProgress) return;
     this.state.queue[index].selected = isSelected;
     this.saveState();
     this.renderQueueButton();
@@ -433,8 +547,7 @@ class BulkAccess {
   }
 
   toggleQueue() {
-    const { toggleQueueButton } = this;
-    const { queue, settings } = this.state;
-    toggleQueueButton.disabled = true;
+    if (this.isInProgress) this.pauseQueue();
+    else this.resumeQueue();
   }
 }

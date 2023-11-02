@@ -47,3 +47,6 @@ const getAPIURL = (url, count = false) => {
   if (urlPattern.test(url)) return Utilities.appendParamsToURL(url, params);
   return false;
 };
+
+// function for parsing an API response for downloading
+const parseAPIResponse = (apiResponse) => false;
