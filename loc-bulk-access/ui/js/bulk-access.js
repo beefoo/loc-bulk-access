@@ -172,6 +172,7 @@ class BulkAccess {
         const state = Object.assign(defaultState, stateData);
         const settings = Object.assign(defaultSettings, state.settings);
         state.settings = settings;
+        state.queue = this.constructor.parseQueue(state.queue);
         resolve(state);
       }, (error) => {
         reject(error);
@@ -179,13 +180,14 @@ class BulkAccess {
     });
   }
 
-  logMessage(text, type = 'notice') {
+  logMessage(text, type = 'notice', tag = '', replace = false) {
     const time = new Date().toISOString().replace('T', ' ').replace(/\.[0-9]+Z/, ''); // YYYY-MM-DDTHH:mm:ss.sssZ
-    this.state.log.push({
-      text,
-      time,
-      type,
-    });
+    const logData = {
+      tag, text, time, type,
+    };
+    const logCount = this.state.log.length;
+    if (replace && logCount > 0) this.state.log[logCount - 1] = logData;
+    else this.state.log.push(logData);
     this.renderLog();
     this.saveState();
   }
@@ -301,8 +303,21 @@ class BulkAccess {
     });
   }
 
-  pauseQueue() {
-    this.isInProgress = false;
+  static parseQueue(queue) {
+    return queue.map((qitem) => {
+      const qitemCopy = qitem;
+      const { item } = qitem;
+      const facetsString = 'facets' in item && item.facets.length > 0 ? item.facets.join(', ') : '';
+      const fullTitle = facetsString.length > 0 ? `${item.title} (${facetsString})` : item.title;
+      qitemCopy.item.fullTitle = fullTitle;
+      return qitemCopy;
+    });
+  }
+
+  pauseQueue(force = false) {
+    if (force === false && this.isInProgress) return;
+    if (force === true) this.isInProgress = false;
+    const { queue } = this.state;
   }
 
   removeQueueItem(queueIndex) {
@@ -388,19 +403,26 @@ class BulkAccess {
   }
 
   resumeQueue() {
-    this.isInProgress = true;
+    if (!this.isInProgress) return;
+
     const { queue, settings } = this.state;
     const { maxDownloadAttempts, parseAPIResponse, timeBetweenRequests } = this.options;
+
+    // retrieve the next active item in the queue
     const nextActiveIndex = queue.findIndex((qitem) => this.constructor.isQueueItemActive(qitem));
+
+    // no more; we are finished!
     if (nextActiveIndex < 0) {
       this.pauseQueue();
       this.renderQueueButton();
       this.logMessage('Queue finished!', 'success');
       return;
     }
+
     // TODO: disable qitem manipulation while in progress
     const i = nextActiveIndex;
     const qitem = queue[i];
+    const { fullTitle } = qitem.item;
 
     // check to see if we need to download metadata
     if (['queued', 'downloading metadata', 'metadata error'].contains(qitem.status)) {
@@ -413,6 +435,7 @@ class BulkAccess {
           index: 0,
           response: false,
           status: 'queued',
+          total: false,
           url: qitem.item.apiURL,
         });
       }
@@ -436,51 +459,66 @@ class BulkAccess {
           index: reqCount,
           response: false,
           status: 'queued',
+          total: lastRequest.total,
           url: lastRequest.response.nextPageURL,
         });
         reqCount += 1;
         nextActiveRequest = apiRequests[reqCount - 1];
       }
       const j = nextActiveRequest.index;
+      const { index, total } = nextActiveRequest;
+      this.state.queue[i].status = 'downloading metadata';
       apiRequests[j].status = 'in progress';
       apiRequests[j].attempts += 1;
       const { attempts } = apiRequests[j];
       // we reached too many attempts
       if (attempts > maxDownloadAttempts) {
-        this.state.queue[i].status = 'metadata error';
+        this.state.queue[i].status = 'data retrieval error';
         this.saveState();
         this.logMessage(`Reached max attempts for API request ${nextActiveRequest.url}. Stopping queue. The website might be down or we reached an data request limit. Please try again later.`, 'error');
-        this.pauseQueue();
+        this.renderQueue();
+        this.pauseQueue(true);
         return;
       }
+      this.renderQueue();
+      if (total !== false) this.logMessage(`Retrieving API data from "${fullTitle}" (request ${index + 1} of ${total})`);
+      else this.logMessage(`Retrieving API data from "${fullTitle}" (first request)`);
       // make the Request
-      const request = new Request(nextActiveRequest.url, { method: 'GET' });
-      request.json().then((resp) => {
-        const data = parseAPIResponse(resp);
-        // data successfully retrieved and parsed
-        if (data !== false) {
-          apiRequests[j].response = data;
-          apiRequests[j].status = 'completed';
-        // error in parsing data
-        } else {
+      fetch(nextActiveRequest.url)
+        .then((resp) => resp.json())
+        .then((resp) => {
+          // check if paused before the request was finished
+          if (!this.isInProgress) return;
+          const data = parseAPIResponse(resp);
+          // data successfully retrieved and parsed
+          if (data !== false) {
+            apiRequests[j].response = data;
+            apiRequests[j].total = data.total;
+            apiRequests[j].status = 'completed';
+          // error in parsing data
+          } else {
+            apiRequests[j].status = 'error';
+            this.logMessage(`Could not parse data from ${nextActiveRequest.url} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
+          }
+          // save the state and continue
+          this.state.queue[i].apiRequests = apiRequests.slice();
+          this.saveState();
+          setTimeout(() => {
+            this.resumeQueue();
+          }, timeBetweenRequests);
+        // error in the request
+        }).catch((error) => {
+          // check if paused before the request was finished
+          if (!this.isInProgress) return;
           apiRequests[j].status = 'error';
-          this.logMessage(`Could not parse data from ${nextActiveRequest.url} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
-        }
-        this.state.queue[i].apiRequests = apiRequests.slice();
-        this.saveState();
-        setTimeout(() => {
-          this.resumeQueue();
-        }, timeBetweenRequests);
-      // error in the request
-      }).catch((error) => {
-        apiRequests[j].status = 'error';
-        this.logMessage(`Coudl not retrieve data from ${nextActiveRequest.url} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
-        this.state.queue[i].apiRequests = apiRequests.slice();
-        this.saveState();
-        setTimeout(() => {
-          this.resumeQueue();
-        }, timeBetweenRequests);
-      });
+          this.logMessage(`Could not retrieve data from ${nextActiveRequest.url} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
+          // save the state and continue
+          this.state.queue[i].apiRequests = apiRequests.slice();
+          this.saveState();
+          setTimeout(() => {
+            this.resumeQueue();
+          }, timeBetweenRequests);
+        });
     }
   }
 
@@ -557,7 +595,8 @@ class BulkAccess {
   }
 
   toggleQueue() {
-    if (this.isInProgress) this.pauseQueue();
-    else this.resumeQueue();
+    this.isInProgress = !this.isInProgress;
+    if (this.isInProgress) this.resumeQueue();
+    else this.pauseQueue();
   }
 }
