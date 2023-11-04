@@ -60,7 +60,7 @@ const parseField = (object, key, expectedType = 'string', defaultValue = '') => 
   if (Array.isArray(value) && value.length === 0) return defaultValue;
 
   // take the first entry of an array if we expect a string
-  if (expectedType === 'string' && Array.isArray(value))value = value[0];
+  if (expectedType === 'string' && Array.isArray(value)) value = value[0];
 
   // convert to string if we expect a string and it is not a string
   if (expectedType === 'string' && typeof value !== 'string') value = String(value);
@@ -93,6 +93,35 @@ const parseField = (object, key, expectedType = 'string', defaultValue = '') => 
   return value;
 };
 
+const getResourceUrl = (resources, key, validFileTypes) => {
+  if (resources.length === 0) return '';
+
+  // get file extension for each resource
+  const rs = resources.map((r) => {
+    const rcopy = r;
+    let ext = '';
+    if (key in r) {
+      const url = r[key];
+      const parts = url.split('.');
+      if (parts.length > 1) ext = `.${parts[parts.length - 1]}`;
+    }
+    rcopy.ext = ext;
+    return rcopy;
+  });
+
+  // filter to only valid file types
+  const validResources = resources.filter((r) => key in r && validFileTypes.includes(r.ext));
+  if (validResources.length === 0) {
+    const first = resources.find((r) => key in r);
+    if (first) return first[key];
+    return '';
+  }
+
+  // sort by file extension priority
+  validResources.sort((a, b) => validFileTypes.indexOf(a.ext) - validFileTypes.indexOf(b.ext));
+  return validResources[0][key];
+};
+
 // function for parsing a single item from the API
 const parseItem = (item) => {
   const resp = {};
@@ -100,7 +129,8 @@ const parseItem = (item) => {
   resp.id = parseField(item, 'number_lccn');
   resp.title = parseField(item, 'title');
   resp.url = parseField(item, 'url');
-  resp.type = parseField(item, 'type');
+  resp.original_format = parseField(item, 'original_format');
+  resp.online_formats = parseField(item, 'online_format', 'array', []);
   resp.subjects = parseField(item, 'subject', 'array', []);
   resp.date = parseField(item, 'date');
   resp.description = parseField(item, 'description');
@@ -108,12 +138,26 @@ const parseItem = (item) => {
   resp.locations = parseField(item, 'location', 'array', []);
   resp.partof = parseField(item, 'partof', 'array', []);
   resp.access_restricted = parseField(item, 'access_restricted');
+
   // get the last image, which is the largest
   const imageURLs = parseField(item, 'image_url', 'array', []);
   const imgCount = imageURLs.length;
   resp.image_url = imgCount > 0 ? imageURLs[imgCount - 1] : '';
+
   // get the resource URL
   const { resources } = item;
+  let resourceUrl = '';
+  // check for video
+  if (resp.online_formats.includes('video')) {
+    resourceUrl = getResourceUrl(resources, 'video', ['.mp4', '.ogv', '.wmv', '.mpg', '.mkv', '.mov', '.avi']);
+  }
+  // check for audio
+  if (resourceUrl === '' && resp.online_formats.includes('audio')) {
+    resourceUrl = getResourceUrl(resources, 'audio', ['.mp3', '.ogg', '.wma', '.aiff', '.wav', '.flac']);
+  }
+  // otherwise, take the image
+  if (resourceUrl === '') resourceUrl = resp.image_url;
+  resp.resource_url = resourceUrl;
 
   return resp;
 };
