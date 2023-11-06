@@ -7,13 +7,6 @@ class BulkAccess {
       getAPIURL: (url, count = false) => url,
       maxDownloadAttempts: 3,
       parseAPIResponse: (apiResponse) => false,
-      queueItemStatuses: [
-        'queued',
-        'downloading metadata',
-        'downloading assets',
-        'completed',
-        'completed with errors',
-      ],
       timeBetweenRequests: 1000,
     };
     this.options = Object.assign(defaults, options);
@@ -159,6 +152,12 @@ class BulkAccess {
     window.close();
   }
 
+  static getFlattenedResults(qitem) {
+    if (!('apiRequests' in qitem)) return [];
+    const results = qitem.apiRequests.map((req) => (req.response ? req.response.results : []));
+    return results.flat();
+  }
+
   static isQueueItemActive(qitem) {
     return qitem.selected && !qitem.status.startsWith('completed');
   }
@@ -181,7 +180,7 @@ class BulkAccess {
   }
 
   logMessage(text, type = 'notice', tag = '', replace = false) {
-    const time = new Date().toISOString().replace('T', ' ').replace(/\.[0-9]+Z/, ''); // YYYY-MM-DDTHH:mm:ss.sssZ
+    const time = Utilities.getTimeString();
     const logData = {
       tag, text, time, type,
     };
@@ -414,18 +413,20 @@ class BulkAccess {
     // no more; we are finished!
     if (nextActiveIndex < 0) {
       this.pauseQueue();
+      this.renderQueue();
       this.renderQueueButton();
       this.logMessage('Queue finished!', 'success');
       return;
     }
 
     // TODO: disable qitem manipulation while in progress
+
     const i = nextActiveIndex;
     const qitem = queue[i];
     const { fullTitle } = qitem.item;
 
     // check to see if we need to download metadata
-    if (['queued', 'downloading metadata', 'metadata error'].contains(qitem.status)) {
+    if (['queued', 'retrieving data', 'data retrieval error'].includes(qitem.status)) {
       const apiRequests = 'apiRequests' in qitem ? qitem.apiRequests : [];
       // check to see if we have not yet made an API request yet
       if (apiRequests.length === 0) {
@@ -447,7 +448,7 @@ class BulkAccess {
         const lastRequest = apiRequests[reqCount - 1];
         // we have completed the API Requests
         if (lastRequest.response.isLast) {
-          this.state.queue[i].status = 'downloaded metadata';
+          this.state.queue[i].status = 'retrieved data';
           this.saveState();
           this.resumeQueue();
           return;
@@ -465,9 +466,10 @@ class BulkAccess {
         reqCount += 1;
         nextActiveRequest = apiRequests[reqCount - 1];
       }
+      // we're ready to make the next request
       const j = nextActiveRequest.index;
       const { index, total } = nextActiveRequest;
-      this.state.queue[i].status = 'downloading metadata';
+      this.state.queue[i].status = 'retrieving data';
       apiRequests[j].status = 'in progress';
       apiRequests[j].attempts += 1;
       const { attempts } = apiRequests[j];
@@ -519,6 +521,29 @@ class BulkAccess {
             this.resumeQueue();
           }, timeBetweenRequests);
         });
+    }
+
+    // all metadata has been retrieved, and data download option is in the settings
+    if (qitem.status === 'retrieved data' && ['data', 'both'].includes(settings.downloadOption)) {
+      const flatResults = this.constructor.getFlattenedResults(qitem);
+
+      // no metadata (and thus no assets) to download; mark everything as complete
+      if (flatResults.length === 0) {
+        this.state.queue[i].status = 'completed';
+        this.saveState();
+        return;
+      }
+
+      // convert data to a downloadable url
+      let dataURI = '';
+      const dataFilename = settings.dataFormat === 'csv' ? `${qitem.item.uid}.csv` : `${qitem.item.uid}.json`;
+      if (settings.dataFormat === 'csv') {
+        const csvString = Utilities.getCSVString(flatResults);
+        dataURI = `data:text/csv;charset=utf-8,${encodeURIComponent(csvString)}`;
+      } else {
+        const jsonString = JSON.stringify(flatResults);
+        dataURI = `data:text/json;charset=utf-8,${encodeURIComponent(jsonString)}`;
+      }
     }
   }
 

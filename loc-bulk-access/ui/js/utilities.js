@@ -11,6 +11,29 @@ class Utilities {
     return newURL;
   }
 
+  static getCSVString(data, headings = false) {
+    if (data.length === 0) return '';
+    const cols = headings ? headings.slice() : Object.keys(data[0]);
+    const rows = data.map((item) => {
+      const row = [];
+      cols.forEach((col) => {
+        if (col in item) {
+          const value = item[col].replaceAll('"', '\\"');
+          row.push(`"${value}"`);
+        } else row.push('');
+      });
+      return row;
+    });
+    rows.unshift(cols.map((col) => `"${col.replaceAll('"', '\\"')}"`));
+    const rowStrings = rows.map((row) => row.join(','));
+    return rowStrings.join('\r\n');
+  }
+
+  static getTimeString() {
+    // YYYY-MM-DDTHH:mm:ss.sssZ -> YYYY-MM-DD HH:mm:ss
+    return new Date().toISOString().replace('T', ' ').replace(/\.[0-9]+Z/, '');
+  }
+
   static parseQueryString(queryString) {
     const result = {};
     queryString.split('&').forEach((part) => {
@@ -36,5 +59,13 @@ class Utilities {
         reject(new Error(error));
       });
     });
+  }
+
+  static stringToId(string) {
+    let fn = String(string);
+    fn = fn.replace(/[^a-zA-Z0-9 _-]/g, '');
+    fn = fn.replace(/[ _-]+/g, '-');
+    fn = fn.toLowerCase();
+    return fn;
   }
 }

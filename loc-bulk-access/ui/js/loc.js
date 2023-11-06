@@ -12,6 +12,7 @@ const apiResponseValidator = (apiResponse) => {
     resp.count = 1;
     resp.countF = '1';
     resp.title = apiResponse.item.title;
+    resp.uid = Utilities.stringToId(resp.title);
     resp.facets = [];
   } else if ('pagination' in apiResponse && 'results' in apiResponse) {
     if (apiResponse.results.length > 0 && 'item' in apiResponse.results[0]) {
@@ -34,6 +35,13 @@ const apiResponseValidator = (apiResponse) => {
         resp.facets = 'facet_limits' in search ? search.facet_limits.split('|') : [];
         if ('query' in search && search.query.length > 0) resp.facets.unshift(`query:"${search.query}"`);
       }
+      resp.uid = Utilities.stringToId(`${resp.title}-${resp.facets.join('-').replaceAll(':', '-')}`);
+    }
+    if ('uid' in resp) {
+      // max 80 characters
+      resp.uid = resp.uid.slice(0, 80);
+      // add timestamp
+      resp.uid = Utilities.stringToId(`${resp.uid}-${Utilities.getTimeString()}`);
     }
   }
   return resp;
