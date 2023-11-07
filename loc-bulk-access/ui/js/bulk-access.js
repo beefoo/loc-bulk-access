@@ -410,7 +410,8 @@ class BulkAccess {
   pauseQueue(force = false) {
     if (force === false && this.isInProgress) return;
     if (force === true) this.isInProgress = false;
-    const { queue } = this.state;
+    this.renderQueueButton();
+    this.renderQueue();
   }
 
   removeQueueItem(queueIndex) {
@@ -438,13 +439,16 @@ class BulkAccess {
   renderQueue() {
     const { queueContainer } = this;
     const { queue } = this.state;
+    const paused = this.isInProgress === false;
     let html = '';
     queue.forEach((qitem, index) => {
       const { item } = qitem;
       const facetsString = 'facets' in item && item.facets.length > 0 ? item.facets.map((f) => `<span class="facet">${f}</span>`).join('') : '';
       const title = facetsString.length > 0 ? `${item.title} ${facetsString}` : item.title;
       const selectedString = 'selected' in qitem && qitem.selected === true ? ' checked' : '';
-      html += '<tr>';
+      const statusClass = qitem.status.replaceAll(' ', '-');
+      const statusText = paused && !['queued', 'completed'].includes(qitem.status) ? 'paused' : qitem.status;
+      html += `<tr class="status-${statusClass}">`;
       html += '<td>';
       html += `  <label for="select-item-${index}" class="visually-hidden">Select this item</label>`;
       html += `  <input id="select-item-${index}" type="checkbox" class="select-item"${selectedString} data-index="${index}" `;
@@ -452,7 +456,7 @@ class BulkAccess {
       html += `<td class="type type-${item.type}">${item.type}</td>`;
       html += `<td class="title"><a href="${item.url}" target="_blank">${title}</a></td>`;
       html += `<td class="count">${item.countF}</td>`;
-      html += `<td class="status type-${qitem.status.replaceAll(' ', '-')}">${qitem.status}</td>`;
+      html += `<td class="status status-${statusClass}">${statusText}</td>`;
       html += '<td class="actions">';
       html += `  <button class="move-item-up" data-index="${index}" title="Move up in queue"><span class="visually-hidden">move up</span>🠹</button>`;
       html += `  <button class="move-item-down" data-index="${index}" title="Move down in queue"><span class="visually-hidden">move down</span>🠻</button>`;
@@ -465,7 +469,7 @@ class BulkAccess {
   }
 
   renderQueueButton() {
-    const { toggleQueueButton } = this;
+    const { toggleQueueButton, isInProgress } = this;
     const { queue } = this.state;
     const activeQueue = queue.filter((qitem) => this.constructor.isQueueItemActive(qitem));
     let started = false;
@@ -473,7 +477,8 @@ class BulkAccess {
     activeQueue.forEach((qitem, index) => {
       if (qitem.status !== 'queued') started = true;
     });
-    toggleQueueButton.innerText = started ? 'Resume queue' : 'Start queue';
+    if (completed || !isInProgress) toggleQueueButton.innerText = started ? 'Resume queue' : 'Start queue';
+    else toggleQueueButton.innerText = 'Pause queue';
     toggleQueueButton.disabled = completed;
   }
 
@@ -498,6 +503,8 @@ class BulkAccess {
   resumeQueue() {
     if (!this.isInProgress) return;
 
+    this.renderQueueButton();
+
     const { queue, settings } = this.state;
     const { maxDownloadAttempts, parseAPIResponse, timeBetweenRequests } = this.options;
 
@@ -507,8 +514,6 @@ class BulkAccess {
     // no more; we are finished!
     if (nextActiveIndex < 0) {
       this.pauseQueue();
-      this.renderQueue();
-      this.renderQueueButton();
       this.logMessage('Queue finished!', 'success');
       return;
     }
@@ -572,7 +577,6 @@ class BulkAccess {
         this.state.queue[i].status = 'data retrieval error';
         this.saveState();
         this.logMessage(`Reached max attempts for API request ${nextActiveRequest.url}. Stopping queue. The website might be down or we reached an data request limit. Please try again later.`, 'error');
-        this.renderQueue();
         this.pauseQueue(true);
         return;
       }
@@ -750,7 +754,9 @@ class BulkAccess {
 
   toggleQueue() {
     this.isInProgress = !this.isInProgress;
-    if (this.isInProgress) this.resumeQueue();
-    else this.pauseQueue();
+    if (this.isInProgress) {
+      this.renderQueue();
+      this.resumeQueue();
+    } else this.pauseQueue();
   }
 }
