@@ -524,7 +524,11 @@ class BulkAccess {
     }
 
     // all metadata has been retrieved, and data download option is in the settings
-    if (qitem.status === 'retrieved data' && ['data', 'both'].includes(settings.downloadOption)) {
+    if (['retrieved data', 'downloading data'].includes(qitem.status) && ['data', 'both'].includes(settings.downloadOption)) {
+      // check to see if file already exists in downloads
+      const dataFilename = `${qitem.item.uid}.${settings.dataFormat}`;
+
+      // retrieve metadata
       const flatResults = this.constructor.getFlattenedResults(qitem);
 
       // no metadata (and thus no assets) to download; mark everything as complete
@@ -535,15 +539,14 @@ class BulkAccess {
       }
 
       // convert data to a downloadable url
-      let dataURI = '';
-      const dataFilename = settings.dataFormat === 'csv' ? `${qitem.item.uid}.csv` : `${qitem.item.uid}.json`;
-      if (settings.dataFormat === 'csv') {
-        const csvString = Utilities.getCSVString(flatResults);
-        dataURI = `data:text/csv;charset=utf-8,${encodeURIComponent(csvString)}`;
-      } else {
-        const jsonString = JSON.stringify(flatResults);
-        dataURI = `data:text/json;charset=utf-8,${encodeURIComponent(jsonString)}`;
-      }
+      let dataString = '';
+      if (settings.dataFormat === 'csv') dataString = Utilities.getCSVString(flatResults);
+      else dataString = JSON.stringify(flatResults);
+      const dataBytes = new TextEncoder().encode(dataString);
+      const dataBlob = new Blob([dataBytes], {
+        type: `application/${settings.dataFormat};charset=utf-8`,
+      });
+      const dataURL = URL.createObjectURL(dataBlob);
     }
   }
 
