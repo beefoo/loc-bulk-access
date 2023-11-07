@@ -86,6 +86,11 @@ class BulkAccess {
         this.browser.tabs.reload(this.tabId);
       }
     });
+
+    // listen for downloads
+    this.browser.downloads.onChanged.addListener((delta) => {
+      this.onDownloadsChanged(delta);
+    });
   }
 
   addToQueue(item) {
@@ -152,6 +157,55 @@ class BulkAccess {
     window.close();
   }
 
+  downloadQueueItemData(i, dataFilename) {
+    const { settings } = this.state;
+    const qitem = this.state.queue[i];
+
+    // retrieve metadata
+    const flatResults = this.constructor.getFlattenedResults(qitem);
+
+    // no metadata (and thus no assets) to download; mark everything as complete
+    if (flatResults.length === 0) {
+      this.state.queue[i].status = 'completed';
+      this.saveState();
+      this.renderQueue();
+      return;
+    }
+
+    // convert data to a downloadable url
+    let dataString = '';
+    if (settings.dataFormat === 'csv') dataString = Utilities.getCSVString(flatResults);
+    else dataString = JSON.stringify(flatResults);
+    const dataBytes = new TextEncoder().encode(dataString);
+    const dataBlob = new Blob([dataBytes], {
+      type: `application/${settings.dataFormat};charset=utf-8`,
+    });
+    const dataURL = URL.createObjectURL(dataBlob);
+
+    // trigger download
+    this.browser.downloads.download({
+      filename: dataFilename,
+      saveAs: false,
+      url: dataURL,
+    // on download start
+    }).then((id) => {
+      this.state.queue[i].dataDownloadId = id;
+      this.saveState();
+    // on download interrupt
+    }, (error) => {
+      if (!this.isInProgress) return;
+      this.logMessage(`Download of ${dataFilename} was interrupted. Retrying.`);
+      this.resumeQueue();
+    });
+
+    // save state
+    this.state.queue[i].dataURL = dataURL;
+    this.state.queue[i].status = 'downloading data';
+    this.saveState();
+    this.renderQueue();
+    this.logMessage(`Downloading data to file ${dataFilename}`);
+  }
+
   static getFlattenedResults(qitem) {
     if (!('apiRequests' in qitem)) return [];
     const results = qitem.apiRequests.map((req) => (req.response ? req.response.results : []));
@@ -215,6 +269,46 @@ class BulkAccess {
     addToQueueEl.disabled = true;
     this.showQueueButton();
     this.setBadgeText(this.state.queue.length);
+  }
+
+  onDownloadedQueueItemData(i) {
+    const qItem = this.state.queue[i];
+    URL.revokeObjectURL(qItem.dataURL);
+    this.state.queue[i].status = 'downloaded data';
+    this.saveState();
+    this.renderQueue();
+  }
+
+  onDownloadsChanged(delta) {
+    const { queue } = this.state;
+    const downloadId = delta.id;
+    const i = queue.findIndex((item) => item.dataDownloadId === downloadId);
+    if (i < 0) return;
+    const qItem = queue[i];
+
+    // state has changed to complete
+    if (delta.state && delta.state.current === 'complete') {
+      this.onDownloadedQueueItemData();
+      this.logMessage(`Downloaded data to ${dataFilename}`, 'success');
+      this.resumeQueue();
+      return;
+    }
+
+    // error triggered
+    if (delta.error) {
+      this.logMessage(`Download error: ${data.error.current}`, 'error');
+    }
+
+    // state has changed to interrupted
+    if (delta.state && delta.state.current === 'interrupted') {
+      this.pauseQueue();
+      this.logMessage(`Download of ${dataFilename} interrupted. Pausing queue.`, 'error');
+    }
+
+    // download was paused
+    if (delta.paused && delta.paused.current === true) {
+      this.pauseQueue();
+    }
   }
 
   onPopup() {
@@ -521,6 +615,7 @@ class BulkAccess {
             this.resumeQueue();
           }, timeBetweenRequests);
         });
+      return;
     }
 
     // all metadata has been retrieved, and data download option is in the settings
@@ -528,25 +623,56 @@ class BulkAccess {
       // check to see if file already exists in downloads
       const dataFilename = `${qitem.item.uid}.${settings.dataFormat}`;
 
-      // retrieve metadata
-      const flatResults = this.constructor.getFlattenedResults(qitem);
+      this.browser.downloads.search({
+        filename: dataFilename,
+      }).then((downloads) => {
+        // check if paused before the request was finished
+        if (!this.isInProgress) return;
 
-      // no metadata (and thus no assets) to download; mark everything as complete
-      if (flatResults.length === 0) {
-        this.state.queue[i].status = 'completed';
-        this.saveState();
-        return;
-      }
+        // check to see if it is in progress
+        const inProgress = downloads.find((dlItem) => dlItem.state === 'in_progress');
+        if (inProgress !== undefined) {
+          this.state.queue[i].status = 'downloading data';
+          this.saveState();
+          this.renderQueue();
+          return;
+        }
 
-      // convert data to a downloadable url
-      let dataString = '';
-      if (settings.dataFormat === 'csv') dataString = Utilities.getCSVString(flatResults);
-      else dataString = JSON.stringify(flatResults);
-      const dataBytes = new TextEncoder().encode(dataString);
-      const dataBlob = new Blob([dataBytes], {
-        type: `application/${settings.dataFormat};charset=utf-8`,
+        // check to see if it's complete and still exists
+        const complete = downloads.find((dlItem) => dlItem.state === 'complete' && dlItem.exists);
+        if (complete !== undefined) {
+          this.onDownloadedQueueItemData(i);
+          this.logMessage(`Data download of ${dataFilename} already completed`, 'success');
+          this.resumeQueue();
+          return;
+        }
+
+        // check to see if it's interrupted or paused and can resume
+        const interrupted = downloads.find((dlItem) => (dlItem.state === 'interrupted' || dlItem.paused) && dlItem.canResume);
+        if (interrupted !== undefined) {
+          this.browser.downloads.resume(interrupted.id);
+          this.state.queue[i].status = 'downloading data';
+          this.saveState();
+          this.renderQueue();
+          this.logMessage(`Resuming data download of ${dataFilename}`);
+          return;
+        }
+
+        // otherwise, download the data
+        this.downloadQueueItemData(i, dataFilename);
+      }, (error) => {
+        // check if paused before the request was finished
+        if (!this.isInProgress) return;
+        this.downloadQueueItemData(i, dataFilename);
       });
-      const dataURL = URL.createObjectURL(dataBlob);
+
+      return;
+    }
+
+    // if we downloaded the data and we only need to download data, item is completed
+    if (qitem.status === 'downloaded data' && settings.downloadOption === 'data') {
+      this.state.queue[i].status = 'completed';
+      this.resumeQueue();
     }
   }
 
