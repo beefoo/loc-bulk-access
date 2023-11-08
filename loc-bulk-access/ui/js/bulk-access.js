@@ -6,6 +6,7 @@ class BulkAccess {
       browser: 'firefox',
       getAPIURL: (url, count = false) => url,
       maxDownloadAttempts: 3,
+      maxLogCount: 500,
       parseAPIResponse: (apiResponse) => false,
       timeBetweenRequests: 1000,
     };
@@ -234,13 +235,18 @@ class BulkAccess {
   }
 
   logMessage(text, type = 'notice', tag = '', replace = false) {
+    const { maxLogCount } = this.options;
     const time = Utilities.getTimeString();
     const logData = {
       tag, text, time, type,
     };
     const logCount = this.state.log.length;
-    if (replace && logCount > 0) this.state.log[logCount - 1] = logData;
-    else this.state.log.push(logData);
+    if (replace && logCount > 0) this.state.log[0] = logData;
+    else this.state.log.unshift(logData);
+
+    // limit the length of the log
+    if (this.state.log.length > maxLogCount) this.state.log.slice(0, maxLogCount);
+
     this.renderLog();
     this.saveState();
   }
@@ -447,8 +453,9 @@ class BulkAccess {
       const title = facetsString.length > 0 ? `${item.title} ${facetsString}` : item.title;
       const selectedString = 'selected' in qitem && qitem.selected === true ? ' checked' : '';
       const statusClass = qitem.status.replaceAll(' ', '-');
+      const errorClass = statusClass.includes('error') ? 'has-error' : '';
       const statusText = paused && !['queued', 'completed'].includes(qitem.status) ? 'paused' : qitem.status;
-      html += `<tr class="status-${statusClass}">`;
+      html += `<tr class="status-${statusClass} ${errorClass}">`;
       html += '<td>';
       html += `  <label for="select-item-${index}" class="visually-hidden">Select this item</label>`;
       html += `  <input id="select-item-${index}" type="checkbox" class="select-item"${selectedString} data-index="${index}" `;
@@ -456,7 +463,7 @@ class BulkAccess {
       html += `<td class="type type-${item.type}">${item.type}</td>`;
       html += `<td class="title"><a href="${item.url}" target="_blank">${title}</a></td>`;
       html += `<td class="count">${item.countF}</td>`;
-      html += `<td class="status status-${statusClass}">${statusText}</td>`;
+      html += `<td class="status status-${statusClass} ${errorClass}">${statusText}</td>`;
       html += '<td class="actions">';
       html += `  <button class="move-item-up" data-index="${index}" title="Move up in queue"><span class="visually-hidden">move up</span>🠹</button>`;
       html += `  <button class="move-item-down" data-index="${index}" title="Move down in queue"><span class="visually-hidden">move down</span>🠻</button>`;
