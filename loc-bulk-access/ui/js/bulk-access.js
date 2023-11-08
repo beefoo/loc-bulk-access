@@ -297,7 +297,7 @@ class BulkAccess {
     if (delta.state && delta.state.current === 'complete') {
       this.onDownloadedQueueItemData();
       this.logMessage(`Downloaded data to ${dataFilename}`, 'success');
-      this.resumeQueue();
+      if (this.isInProgress) this.resumeQueue();
       return;
     }
 
@@ -308,13 +308,13 @@ class BulkAccess {
 
     // state has changed to interrupted
     if (delta.state && delta.state.current === 'interrupted') {
-      this.pauseQueue();
+      this.pauseQueue(true);
       this.logMessage(`Download of ${dataFilename} interrupted. Pausing queue.`, 'error');
     }
 
     // download was paused
     if (delta.paused && delta.paused.current === true) {
-      this.pauseQueue();
+      this.pauseQueue(true);
     }
   }
 
@@ -534,7 +534,7 @@ class BulkAccess {
 
     // no more; we are finished!
     if (nextActiveIndex < 0) {
-      this.pauseQueue();
+      this.pauseQueue(true);
       this.logMessage('Queue finished!', 'success');
       return;
     }
