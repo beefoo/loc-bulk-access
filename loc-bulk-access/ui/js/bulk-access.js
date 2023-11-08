@@ -5,6 +5,7 @@ class BulkAccess {
       apiResponseValidator: (apiResponse) => ({ valid: false, type: 'Unknown', count: 0 }),
       browser: 'firefox',
       getAPIURL: (url, count = false) => url,
+      maxArchivedQueueItems: 50,
       maxDownloadAttempts: 3,
       maxLogCount: 500,
       parseAPIResponse: (apiResponse) => false,
@@ -365,6 +366,7 @@ class BulkAccess {
       const { url, id } = tabs[0];
       this.browser.storage.local.set({ queuePage: { url, id } });
       this.tabId = id;
+      this.pruneQueue();
       this.renderQueue();
       this.renderSettings();
       this.renderLog();
@@ -418,6 +420,18 @@ class BulkAccess {
     if (force === true) this.isInProgress = false;
     this.renderQueueButton();
     this.renderQueue();
+  }
+
+  pruneQueue() {
+    const { queue } = this.state;
+    const { maxArchivedQueueItems } = this.options;
+    const completedItems = queue.filter((qitem) => qitem.status === 'completed');
+    if (completedItems.length <= maxArchivedQueueItems) return;
+    const delta = completedItems.length - maxArchivedQueueItems;
+    const prunedItems = completedItems.slice(delta);
+    const incompleteItems = queue.filter((qitem) => qitem.status !== 'completed');
+    this.state.queue = prunedItems.concat(incompleteItems);
+    this.saveState();
   }
 
   removeQueueItem(queueIndex) {
