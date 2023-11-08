@@ -447,7 +447,7 @@ class BulkAccess {
     const { queue } = this.state;
     const paused = this.isInProgress === false;
     let html = '';
-    queue.forEach((qitem, index) => {
+    queue.toReversed().forEach((qitem, index) => {
       const { item } = qitem;
       const facetsString = 'facets' in item && item.facets.length > 0 ? item.facets.map((f) => `<span class="facet">${f}</span>`).join('') : '';
       const title = facetsString.length > 0 ? `${item.title} ${facetsString}` : item.title;
