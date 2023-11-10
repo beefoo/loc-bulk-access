@@ -647,10 +647,9 @@ class BulkAccess {
     if (['retrieved data', 'downloading data'].includes(qitem.status) && ['data', 'both'].includes(settings.downloadOption)) {
       // check to see if file already exists in downloads
       const dataFilename = `${qitem.item.uid}.${settings.dataFormat}`;
+      const searchQuery = 'dataDownloadId' in qitem ? { id: qitem.dataDownloadId } : { filename: dataFilename };
 
-      this.browser.downloads.search({
-        filename: dataFilename,
-      }).then((downloads) => {
+      this.browser.downloads.search(searchQuery).then((downloads) => {
         // check if paused before the request was finished
         if (!this.isInProgress) return;
 
