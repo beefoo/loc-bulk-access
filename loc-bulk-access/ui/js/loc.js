@@ -70,6 +70,9 @@ const parseField = (object, key, expectedType = 'string', defaultValue = '') => 
   // take the first entry of an array if we expect a string
   if (expectedType === 'string' && Array.isArray(value)) value = value[0];
 
+  // parse bool
+  if (typeof value === 'boolean') value = value ? 'true' : 'false';
+
   // convert to string if we expect a string and it is not a string
   if (expectedType === 'string' && typeof value !== 'string') value = String(value);
 

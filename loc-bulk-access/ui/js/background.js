@@ -5,7 +5,7 @@
     app.onStartup();
   });
 
-  app.browser.tabs.onActivated.addListener(() => {
+  app.browser.tabs.onUpdated.addListener(() => {
     app.onStartup();
   });
 }());

@@ -11,14 +11,20 @@ class Utilities {
     return newURL;
   }
 
-  static getCSVString(data, headings = false) {
+  static getCSVString(data, headings = false, listDelimeter = ';') {
     if (data.length === 0) return '';
     const cols = headings ? headings.slice() : Object.keys(data[0]);
     const rows = data.map((item) => {
       const row = [];
       cols.forEach((col) => {
         if (col in item) {
-          const value = item[col].replaceAll('"', '\\"');
+          let value = item[col];
+          if (Array.isArray(value)) {
+            value = value.map((v) => String(v).replaceAll('"', '\\"'));
+            value = value.join(listDelimeter);
+          } else {
+            value = String(value).replaceAll('"', '\\"');
+          }
           row.push(`"${value}"`);
         } else row.push('');
       });

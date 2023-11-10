@@ -46,7 +46,7 @@ class BulkAccess {
   }
 
   addQueueListeners() {
-    const { queueContainer, toggleQueueButton } = this;
+    const { logContainer, queueContainer, toggleQueueButton } = this;
 
     // Listener for dynamic rows
     queueContainer.onclick = (e) => {
@@ -93,6 +93,14 @@ class BulkAccess {
     this.browser.downloads.onChanged.addListener((delta) => {
       this.onDownloadsChanged(delta);
     });
+
+    logContainer.onclick = (e) => {
+      // listen for show-download folder
+      const showDownloadFolder = e.target.closest('.show-download-folder');
+      if (showDownloadFolder) {
+        this.showDownloadFolder(parseInt(showDownloadFolder.getAttribute('data-id'), 10));
+      }
+    };
   }
 
   addToQueue(item) {
@@ -288,7 +296,7 @@ class BulkAccess {
 
   onDownloadedQueueItemData(i) {
     const qItem = this.state.queue[i];
-    URL.revokeObjectURL(qItem.dataURL);
+    if (qItem) URL.revokeObjectURL(qItem.dataURL);
     this.state.queue[i].status = 'downloaded data';
     this.saveState();
     this.renderQueue();
@@ -303,8 +311,8 @@ class BulkAccess {
 
     // state has changed to complete
     if (delta.state && delta.state.current === 'complete') {
-      this.onDownloadedQueueItemData();
-      this.logMessage(`Downloaded data to ${dataFilename}`, 'success');
+      this.onDownloadedQueueItemData(i);
+      this.logMessage(`Downloaded data to ${dataFilename} <button class="show-download-folder" data-id="${downloadId}">open download folder</button>`, 'success');
       if (this.isInProgress) this.resumeQueue();
       return;
     }
@@ -677,7 +685,7 @@ class BulkAccess {
         const complete = downloads.find((dlItem) => dlItem.state === 'complete' && dlItem.exists);
         if (complete !== undefined) {
           this.onDownloadedQueueItemData(i);
-          this.logMessage(`Data download of ${dataFilename} already completed`, 'success');
+          this.logMessage(`Data download of ${dataFilename} already completed <button class="show-download-folder" data-id="${dlItem.id}">open download folder</button>`, 'success');
           this.resumeQueue();
           return;
         }
@@ -707,6 +715,9 @@ class BulkAccess {
     // if we downloaded the data and we only need to download data, item is completed
     if (qitem.status === 'downloaded data' && settings.downloadOption === 'data') {
       this.state.queue[i].status = 'completed';
+      this.state.queue[i].checked = false;
+      this.saveState();
+      this.renderQueue();
       this.resumeQueue();
     }
   }
@@ -765,6 +776,10 @@ class BulkAccess {
         this.constructor.toggleOption(opt);
       }
     };
+  }
+
+  showDownloadFolder(downloadId) {
+    this.browser.downloads.show(downloadId);
   }
 
   showQueueButton() {
