@@ -13,7 +13,7 @@
         <tr>
           <th>
             <label for="select-all" class="visually-hidden">Select all</label>
-            <input id="select-all" type="checkbox" class="select-all" />
+            <input id="select-all" type="checkbox" class="select-all disable-when-active" />
           </th>
           <th>Type</th>
           <th>Title</th>
@@ -30,41 +30,41 @@
           <fieldset id="download-option-fieldset">
             <legend>What would you like to download?</legend>
             <label for="download-option-data">
-              <input id="download-option-data" name="downloadOption" type="radio" value="data" class="toggle settings-option" data-toggle="asset-size-fieldset=off&data-format-fieldset=on" />
+              <input id="download-option-data" name="downloadOption" type="radio" value="data" class="toggle settings-option disable-when-active" data-toggle="asset-size-fieldset=off&data-format-fieldset=on" />
               Just the data
             </label>
             <label for="download-option-assets">
-              <input id="download-option-assets" name="downloadOption" type="radio" value="assets" class="toggle settings-option" data-toggle="asset-size-fieldset=on&data-format-fieldset=off" />
+              <input id="download-option-assets" name="downloadOption" type="radio" value="assets" class="toggle settings-option disable-when-active" data-toggle="asset-size-fieldset=on&data-format-fieldset=off" />
               Just the assets
             </label>
             <label for="download-option-both">
-              <input id="download-option-both" name="downloadOption" type="radio" value="both" class="toggle settings-option" data-toggle="asset-size-fieldset=on&data-format-fieldset=on" />
+              <input id="download-option-both" name="downloadOption" type="radio" value="both" class="toggle settings-option disable-when-active" data-toggle="asset-size-fieldset=on&data-format-fieldset=on" />
               Both
             </label>
           </fieldset>
           <fieldset id="data-format-fieldset" class="toggle-target">
             <legend>Data format</legend>
             <label for="data-format-csv">
-              <input id="data-format-csv" name="dataFormat" type="radio" value="csv" class="settings-option" />
+              <input id="data-format-csv" name="dataFormat" type="radio" value="csv" class="settings-option disable-when-active" />
               CSV
             </label>
             <label for="data-format-json">
-              <input id="data-format-json" name="dataFormat" type="radio" value="json" class="settings-option" />
+              <input id="data-format-json" name="dataFormat" type="radio" value="json" class="settings-option disable-when-active" />
               JSON
             </label>
           </fieldset>
           <fieldset id="asset-size-fieldset" class="toggle-target">
             <legend>Asset size</legend>
             <label for="asset-size-smallest">
-              <input id="asset-size-smallest" name="assetSize" type="radio" value="smallest" class="settings-option" />
+              <input id="asset-size-smallest" name="assetSize" type="radio" value="smallest" class="settings-option disable-when-active" />
               Smallest
             </label>
             <label for="asset-size-medium">
-              <input id="asset-size-medium" name="assetSize" type="radio" value="medium" class="settings-option" />
+              <input id="asset-size-medium" name="assetSize" type="radio" value="medium" class="settings-option disable-when-active" />
               Medium
             </label>
             <label for="asset-size-largest">
-              <input id="asset-size-largest" name="assetSize" type="radio" value="largest" class="settings-option" />
+              <input id="asset-size-largest" name="assetSize" type="radio" value="largest" class="settings-option disable-when-active" />
               Largest
             </label>
           </fieldset>

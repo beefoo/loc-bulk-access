@@ -159,6 +159,14 @@ class BulkAccess {
     window.close();
   }
 
+  static disableInputs(isDisabled = true) {
+    const inputs = document.querySelectorAll('.disable-when-active');
+    inputs.forEach((input) => {
+      // eslint-disable-next-line no-param-reassign
+      input.disabled = isDisabled;
+    });
+  }
+
   downloadQueueItemData(i, dataFilename) {
     const { settings } = this.state;
     const qitem = this.state.queue[i];
@@ -420,6 +428,7 @@ class BulkAccess {
     if (force === true) this.isInProgress = false;
     this.renderQueueButton();
     this.renderQueue();
+    this.constructor.disableInputs(false);
   }
 
   pruneQueue() {
@@ -469,19 +478,20 @@ class BulkAccess {
       const statusClass = qitem.status.replaceAll(' ', '-');
       const errorClass = statusClass.includes('error') ? 'has-error' : '';
       const statusText = paused && !['queued', 'completed'].includes(qitem.status) ? 'paused' : qitem.status;
+      const disabledString = paused ? '' : 'disabled';
       html += `<tr class="status-${statusClass} ${errorClass}">`;
       html += '<td>';
       html += `  <label for="select-item-${index}" class="visually-hidden">Select this item</label>`;
-      html += `  <input id="select-item-${index}" type="checkbox" class="select-item"${selectedString} data-index="${index}" `;
+      html += `  <input id="select-item-${index}" type="checkbox" class="disable-when-active select-item"${selectedString} data-index="${index}" ${disabledString} />`;
       html += '</td>';
       html += `<td class="type type-${item.type}">${item.type}</td>`;
       html += `<td class="title"><a href="${item.url}" target="_blank">${title}</a></td>`;
       html += `<td class="count">${item.countF}</td>`;
       html += `<td class="status status-${statusClass} ${errorClass}">${statusText}</td>`;
       html += '<td class="actions">';
-      html += `  <button class="move-item-up" data-index="${index}" title="Move up in queue"><span class="visually-hidden">move up</span>🠹</button>`;
-      html += `  <button class="move-item-down" data-index="${index}" title="Move down in queue"><span class="visually-hidden">move down</span>🠻</button>`;
-      html += `  <button class="remove-item" data-index="${index}" title="Remove from queue"><span class="visually-hidden">remove</span>×</button>`;
+      html += `  <button class="move-item-up disable-when-active" data-index="${index}" title="Move up in queue" ${disabledString}><span class="visually-hidden">move up</span>🠹</button>`;
+      html += `  <button class="move-item-down disable-when-active" data-index="${index}" title="Move down in queue" ${disabledString}><span class="visually-hidden">move down</span>🠻</button>`;
+      html += `  <button class="remove-item disable-when-active" data-index="${index}" title="Remove from queue" ${disabledString}><span class="visually-hidden">remove</span>×</button>`;
       html += '</td>';
       html += '</tr>';
     });
@@ -539,7 +549,8 @@ class BulkAccess {
       return;
     }
 
-    // TODO: disable qitem manipulation while in progress
+    // Disable qitem manipulation while in progress
+    this.constructor.disableInputs();
 
     const i = nextActiveIndex;
     const qitem = queue[i];
