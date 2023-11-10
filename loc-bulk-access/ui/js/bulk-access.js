@@ -252,7 +252,7 @@ class BulkAccess {
     });
   }
 
-  logMessage(text, type = 'notice', tag = '', replace = false) {
+  logMessage(text, type = 'notice', replace = false, tag = '') {
     const { maxLogCount } = this.options;
     const time = Utilities.getTimeString();
     const logData = {
@@ -313,7 +313,7 @@ class BulkAccess {
     // state has changed to complete
     if (delta.state && delta.state.current === 'complete') {
       this.onDownloadedQueueItemData(i);
-      this.logMessage(`Downloaded data to ${qItem.dataFilename} <button class="show-download-folder" data-id="${downloadId}">open download folder</button>`, 'success');
+      this.logMessage(`Downloaded data to ${qItem.dataFilename} <button class="show-download-folder" data-id="${downloadId}">open download folder</button>`, 'success', true);
       if (this.isInProgress) this.resumeQueue();
       return;
     }
@@ -716,7 +716,7 @@ class BulkAccess {
     // if we downloaded the data and we only need to download data, item is completed
     if (qitem.status === 'downloaded data' && settings.downloadOption === 'data') {
       this.state.queue[i].status = 'completed';
-      this.state.queue[i].checked = false;
+      this.state.queue[i].selected = false;
       this.saveState();
       this.renderQueue();
       this.resumeQueue();
