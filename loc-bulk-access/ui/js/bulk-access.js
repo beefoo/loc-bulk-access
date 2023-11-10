@@ -218,6 +218,7 @@ class BulkAccess {
 
     // save state
     this.state.queue[i].dataURL = dataURL;
+    this.state.queue[i].dataFilename = dataFilename;
     this.state.queue[i].status = 'downloading data';
     this.saveState();
     this.renderQueue();
@@ -325,7 +326,7 @@ class BulkAccess {
     // state has changed to interrupted
     if (delta.state && delta.state.current === 'interrupted') {
       this.pauseQueue(true);
-      this.logMessage(`Download of ${dataFilename} interrupted. Pausing queue.`, 'error');
+      this.logMessage(`Download of ${qItem.dataFilename} interrupted. Pausing queue.`, 'error');
     }
 
     // download was paused

@@ -20,17 +20,17 @@ class Utilities {
         if (col in item) {
           let value = item[col];
           if (Array.isArray(value)) {
-            value = value.map((v) => String(v).replaceAll('"', '\\"'));
+            value = value.map((v) => String(v).replaceAll('"', '""'));
             value = value.join(listDelimeter);
           } else {
-            value = String(value).replaceAll('"', '\\"');
+            value = String(value).replaceAll('"', '""');
           }
           row.push(`"${value}"`);
         } else row.push('');
       });
       return row;
     });
-    rows.unshift(cols.map((col) => `"${col.replaceAll('"', '\\"')}"`));
+    rows.unshift(cols.map((col) => `"${col.replaceAll('"', '""')}"`));
     const rowStrings = rows.map((row) => row.join(','));
     return rowStrings.join('\r\n');
   }
