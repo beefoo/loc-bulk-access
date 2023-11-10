@@ -479,7 +479,9 @@ class BulkAccess {
     const { queue } = this.state;
     const paused = this.isInProgress === false;
     let html = '';
-    queue.toReversed().forEach((qitem, index) => {
+    const qlen = queue.length;
+    queue.toReversed().forEach((qitem, rindex) => {
+      const index = qlen - rindex - 1;
       const { item } = qitem;
       const facetsString = 'facets' in item && item.facets.length > 0 ? item.facets.map((f) => `<span class="facet">${f}</span>`).join('') : '';
       const title = facetsString.length > 0 ? `${item.title} ${facetsString}` : item.title;
@@ -622,7 +624,7 @@ class BulkAccess {
         return;
       }
       this.renderQueue();
-      if (total !== false) this.logMessage(`Retrieving API data from "${fullTitle}" (request ${index + 1} of ${total})`);
+      if (total !== false) this.logMessage(`Retrieving API data from "${fullTitle}" (request ${index + 1} of ${total})`, 'notice', (index > 0));
       else this.logMessage(`Retrieving API data from "${fullTitle}" (first request)`);
       // make the Request
       fetch(nextActiveRequest.url)
