@@ -312,7 +312,7 @@ class BulkAccess {
     // state has changed to complete
     if (delta.state && delta.state.current === 'complete') {
       this.onDownloadedQueueItemData(i);
-      this.logMessage(`Downloaded data to ${dataFilename} <button class="show-download-folder" data-id="${downloadId}">open download folder</button>`, 'success');
+      this.logMessage(`Downloaded data to ${qItem.dataFilename} <button class="show-download-folder" data-id="${downloadId}">open download folder</button>`, 'success');
       if (this.isInProgress) this.resumeQueue();
       return;
     }
@@ -665,7 +665,7 @@ class BulkAccess {
     // all metadata has been retrieved, and data download option is in the settings
     if (['retrieved data', 'downloading data'].includes(qitem.status) && ['data', 'both'].includes(settings.downloadOption)) {
       // check to see if file already exists in downloads
-      const dataFilename = `${qitem.item.uid}.${settings.dataFormat}`;
+      const dataFilename = `${qitem.item.uid}-${Utilities.getTimeString(false)}.${settings.dataFormat}`;
       const searchQuery = 'dataDownloadId' in qitem ? { id: qitem.dataDownloadId } : { filename: dataFilename };
 
       this.browser.downloads.search(searchQuery).then((downloads) => {

@@ -229,12 +229,12 @@ fieldset.toggle-target.active {
   color: var(--notice-light);
 }
 .queue-log button {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   padding: 2px 4px;
 }
 
-input:disabled,
-button:disabled {
+.queue-page input:disabled,
+.queue-page button:disabled {
   opacity: 0.333;
   cursor: not-allowed;
 }

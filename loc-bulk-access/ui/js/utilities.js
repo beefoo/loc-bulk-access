@@ -35,9 +35,11 @@ class Utilities {
     return rowStrings.join('\r\n');
   }
 
-  static getTimeString() {
+  static getTimeString(withTime = true) {
     // YYYY-MM-DDTHH:mm:ss.sssZ -> YYYY-MM-DD HH:mm:ss
-    return new Date().toISOString().replace('T', ' ').replace(/\.[0-9]+Z/, '');
+    const tString = new Date().toISOString().replace('T', ' ').replace(/\.[0-9]+Z/, '');
+    if (withTime) return tString;
+    return tString.split(' ')[0];
   }
 
   static parseQueryString(queryString) {
