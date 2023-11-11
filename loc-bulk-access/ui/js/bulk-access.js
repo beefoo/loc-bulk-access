@@ -203,6 +203,7 @@ class BulkAccess {
 
     // trigger download
     this.browser.downloads.download({
+      conflictAction: 'overwrite',
       filename: dataFilename,
       saveAs: false,
       url: dataURL,
@@ -532,6 +533,11 @@ class BulkAccess {
     });
   }
 
+  requeueItem(i) {
+    this.state.queue[i].status = 'queued';
+    delete this.state.queue[i].dataDownloadId;
+  }
+
   resumeQueue() {
     if (!this.isInProgress) return;
 
@@ -738,7 +744,7 @@ class BulkAccess {
       this.state.queue[index].selected = isChecked;
       // if was already completed, re-add to queue
       if (itemChanged && isChecked && qItem.status === 'completed') {
-        this.state.queue[index].status = 'queued';
+        this.requeueItem(index);
         statusChanged = true;
       }
     });
@@ -756,7 +762,7 @@ class BulkAccess {
     this.state.queue[index].selected = isSelected;
     // if was already completed, re-add to queue
     if (isSelected && qItem.status === 'completed') {
-      this.state.queue[index].status = 'queued';
+      this.requeueItem(index);
       statusChanged = true;
     }
     this.saveState();
