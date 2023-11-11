@@ -30,15 +30,15 @@
           <fieldset id="download-option-fieldset">
             <legend>What would you like to download?</legend>
             <label for="download-option-data">
-              <input id="download-option-data" name="downloadOption" type="radio" value="data" class="toggle settings-option disable-when-active" data-toggle="asset-size-fieldset=off&data-format-fieldset=on" />
+              <input id="download-option-data" name="downloadOption" type="radio" value="data" class="toggle settings-option disable-when-active" data-toggle="asset-size-fieldset=off&data-format-fieldset=on&resource-download-fieldset-off" />
               Just the data
             </label>
             <label for="download-option-assets">
-              <input id="download-option-assets" name="downloadOption" type="radio" value="assets" class="toggle settings-option disable-when-active" data-toggle="asset-size-fieldset=on&data-format-fieldset=off" />
+              <input id="download-option-assets" name="downloadOption" type="radio" value="assets" class="toggle settings-option disable-when-active" data-toggle="asset-size-fieldset=on&data-format-fieldset=off&resource-download-fieldset=on" />
               Just the assets
             </label>
             <label for="download-option-both">
-              <input id="download-option-both" name="downloadOption" type="radio" value="both" class="toggle settings-option disable-when-active" data-toggle="asset-size-fieldset=on&data-format-fieldset=on" />
+              <input id="download-option-both" name="downloadOption" type="radio" value="both" class="toggle settings-option disable-when-active" data-toggle="asset-size-fieldset=on&data-format-fieldset=on&resource-download-fieldset=on" />
               Both
             </label>
           </fieldset>
@@ -68,6 +68,19 @@
               Largest
             </label>
           </fieldset>
+          <div style="display: none;"> <!-- not implemented; disable this for now -->
+            <fieldset id="resource-download-fieldset" class="toggle-target">
+              <legend>For each item, how many assets to download?</legend>
+              <label for="resource-download-first">
+                <input id="resource-download-first" name="resourceDownload" type="radio" value="first" class="settings-option disable-when-active" />
+                First
+              </label>
+              <label for="resource-download-all">
+                <input id="resource-download-all" name="resourceDownload" type="radio" value="all" class="settings-option disable-when-active" />
+                All
+              </label>
+            </fieldset>
+          </div>
         </div>
         <div class="queue-actions">
           <button id="toggle-queue" class="toggle-queue">Start queue</button>

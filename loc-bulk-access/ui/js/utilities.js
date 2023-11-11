@@ -35,6 +35,17 @@ class Utilities {
     return rowStrings.join('\r\n');
   }
 
+  static getFileExtension(urlOrPath, defaultExt = 'jpg') {
+    const parts = urlOrPath.split('.');
+    if (parts.length <= 1) return defaultExt;
+    const part = parts.pop();
+    const hashParts = part.split('#');
+    const [hashPart] = hashParts;
+    const qParts = hashPart.split('?');
+    const [ext] = qParts;
+    return ext;
+  }
+
   static getTimeString(withTime = true) {
     // YYYY-MM-DDTHH:mm:ss.sssZ -> YYYY-MM-DD HH:mm:ss
     const tString = new Date().toISOString().replace('T', ' ').replace(/\.[0-9]+Z/, '');

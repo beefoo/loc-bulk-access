@@ -26,6 +26,7 @@ class BulkAccess {
         dataFormat: 'csv',
         downloadOption: 'data',
         assetSize: 'smallest',
+        resourceDownload: 'first',
       },
     };
     this.state = this.defaultState;

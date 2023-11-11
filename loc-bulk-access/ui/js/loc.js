@@ -167,6 +167,34 @@ const parseItem = (item) => {
   if (resourceUrl === '') resourceUrl = resp.image_url;
   resp.resource_url = resourceUrl;
 
+  // get resource count
+  resp.resource_count = 1;
+  if (resources && resources.length > 0) {
+    const [firstResource] = resources;
+    resp.resource_count = 'files' in firstResource ? firstResource.files : 1;
+  }
+
+  return resp;
+};
+
+const parseResources = (item, apiItem, apiResources = []) => {
+  const resp = [];
+  // for now, just support images, audio, and video
+  const supportedFormats = ['image', 'audio', 'video'];
+  let format = 'image';
+  supportedFormats.forEach((sformat) => {
+    if (item.online_formats.includes(sformat)) format = sformat;
+  });
+  const fileExtension = Utilities.getFileExtension(item.resource_url);
+  // for now, just add one resource
+  resp.push({
+    url: item.resource_url,
+    format,
+    fileExtension,
+    filename: `${item.id}.${fileExtension}`,
+    status: 'queued',
+  });
+  // TODO: retrieve all resources
   return resp;
 };
 
@@ -180,6 +208,7 @@ const parseAPIResponse = (apiResponse) => {
   // this is an item
   if ('item' in apiResponse) {
     resp.results = [parseItem(apiResponse.item)];
+    resp.resources = [parseResources(resp.results[0], apiResponse.item, apiResponse.resources)];
     resp.isLast = true;
     resp.total = 1;
   // this is a list of items (search or collection)
@@ -192,9 +221,14 @@ const parseAPIResponse = (apiResponse) => {
       if (resp.nextPageURL === false) resp.isLast = true;
       resp.total = pagination.total;
       resp.results = results.map((result) => parseItem(result));
+      resp.resources = results.map((result, j) => parseResources(resp.results[j], result));
     }
   } else {
     return false;
   }
+  // add filenames to results
+  resp.results.forEach((result, i) => {
+    resp.results[i].filename = resp.resources[i][0].filename;
+  });
   return resp;
 };
