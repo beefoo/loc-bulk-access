@@ -724,25 +724,43 @@ class BulkAccess {
     const checkboxes = document.querySelectorAll('.select-item');
     if (checkboxes.length === 0) return;
     let isChanged = false;
+    let statusChanged = false;
     checkboxes.forEach((el) => {
+      let itemChanged = false;
       const checkbox = el;
       if (checkbox.checked !== isChecked) {
         checkbox.checked = isChecked;
         isChanged = true;
+        itemChanged = true;
       }
       const index = parseInt(el.getAttribute('data-index'), 10);
-      this.state.queue[index].selected = true;
+      const qItem = this.state.queue[index];
+      this.state.queue[index].selected = isChecked;
+      // if was already completed, re-add to queue
+      if (itemChanged && isChecked && qItem.status === 'completed') {
+        this.state.queue[index].status = 'queued';
+        statusChanged = true;
+      }
     });
     if (isChanged) {
       this.saveState();
+      if (statusChanged) this.renderQueue();
       this.renderQueueButton();
     }
   }
 
   selectQueueItem(index, isSelected) {
     if (this.isInProgress) return;
+    const qItem = this.state.queue[index];
+    let statusChanged = false;
     this.state.queue[index].selected = isSelected;
+    // if was already completed, re-add to queue
+    if (isSelected && qItem.status === 'completed') {
+      this.state.queue[index].status = 'queued';
+      statusChanged = true;
+    }
     this.saveState();
+    if (statusChanged) this.renderQueue();
     this.renderQueueButton();
   }
 
