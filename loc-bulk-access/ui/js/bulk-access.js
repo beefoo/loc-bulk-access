@@ -478,8 +478,9 @@ class BulkAccess {
       const statusClass = qitem.status.replaceAll(' ', '-');
       const errorClass = statusClass.includes('error') ? 'has-error' : '';
       const statusText = paused && !['queued', 'completed'].includes(qitem.status) ? 'paused' : qitem.status;
+      const inProgressClass = !paused && !['queued', 'completed'].includes(qitem.status) && !statusClass.includes('error') ? 'in-progress' : '';
       const disabledString = paused ? '' : 'disabled';
-      html += `<tr class="status-${statusClass} ${errorClass}">`;
+      html += `<tr class="status-${statusClass} ${inProgressClass} ${errorClass}">`;
       html += '<td>';
       html += `  <label for="select-item-${index}" class="visually-hidden">Select this item</label>`;
       html += `  <input id="select-item-${index}" type="checkbox" class="disable-when-active select-item"${selectedString} data-index="${index}" ${disabledString} />`;
@@ -487,7 +488,7 @@ class BulkAccess {
       html += `<td class="type type-${item.type}">${item.type}</td>`;
       html += `<td class="title"><a href="${item.url}" target="_blank">${title}</a></td>`;
       html += `<td class="count">${item.countF}</td>`;
-      html += `<td class="status status-${statusClass} ${errorClass}">${statusText}</td>`;
+      html += `<td class="status status-${statusClass} ${inProgressClass} ${errorClass}">${statusText}</td>`;
       html += '<td class="actions">';
       html += `  <button class="move-item-up disable-when-active" data-index="${index}" title="Move up in queue" ${disabledString}><span class="visually-hidden">move up</span>🠹</button>`;
       html += `  <button class="move-item-down disable-when-active" data-index="${index}" title="Move down in queue" ${disabledString}><span class="visually-hidden">move down</span>🠻</button>`;

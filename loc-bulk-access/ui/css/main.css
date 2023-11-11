@@ -141,6 +141,40 @@ thead th {
   font-size: 1.2rem;
   margin: 0 2px 0 0;
 }
+.queue-table tr.status-completed {
+  opacity: 0.8;
+  background: var(--base-lighter);
+}
+.queue-table td.status {
+  color: var(--base-darkest);
+  background: var(--primary-light);
+  font-weight: bold;
+}
+@keyframes in-progress-gradient { 
+  0%   { background-position: 0 0; }
+  100% { background-position: -200% 0; }
+}
+.queue-table td.in-progress {
+  background: repeating-linear-gradient(to right, #75e773 0%, #d9f6d9 50%, #75e773 100%);
+  background-size: 200% auto;
+  background-position: 0 100%;
+  animation: in-progress-gradient 2s infinite;
+  animation-fill-mode: forwards;
+  animation-timing-function: linear;
+}
+.queue-table td.status-queued {
+  background: var(--notice-light);
+  font-weight: normal;
+  font-style: italic;
+}
+.queue-table td.status-completed {
+  background: var(--success-light);
+  color: var(--success-darker);
+}
+.queue-table td.has-error {
+  background: var(--error-light);
+  color: var(--error-darker);
+}
 
 .queue-toolbar {
   width: 100%;
