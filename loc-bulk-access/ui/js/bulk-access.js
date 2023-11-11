@@ -57,9 +57,9 @@ class BulkAccess {
       if (removeItem) {
         this.removeQueueItem(parseInt(removeItem.getAttribute('data-index'), 10));
       } else if (moveItemUp) {
-        this.moveQueueItem(parseInt(moveItemUp.getAttribute('data-index'), 10), -1);
+        this.moveQueueItem(parseInt(moveItemUp.getAttribute('data-index'), 10), 1);
       } else if (moveItemDown) {
-        this.moveQueueItem(parseInt(moveItemDown.getAttribute('data-index'), 10), 1);
+        this.moveQueueItem(parseInt(moveItemDown.getAttribute('data-index'), 10), -1);
       } else if (selectItem) {
         this.selectQueueItem(parseInt(selectItem.getAttribute('data-index'), 10), selectItem.checked);
       }
