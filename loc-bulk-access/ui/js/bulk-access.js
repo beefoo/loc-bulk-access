@@ -85,7 +85,8 @@ class BulkAccess {
     // if this tab becomes active, refresh
     this.browser.tabs.onActivated.addListener((activeInfo) => {
       if (activeInfo.tabId === this.tabId) {
-        this.browser.tabs.reload(this.tabId);
+        this.renderQueue();
+        this.renderQueueButton();
       }
     });
 
@@ -393,28 +394,16 @@ class BulkAccess {
   }
 
   openQueuePage() {
-    const queuePageURL = 'queue.html';
-    const queuePage = {
-      url: queuePageURL,
-    };
-    Utilities.storageGet(this.browser, 'queuePage', queuePage).then((page) => {
-      const pageURL = page.url;
-      if (pageURL === queuePageURL) {
-        this.createTab(queuePageURL);
+    const queuePageURL = browser.runtime.getURL('ui/queue.html');
+    // check if query tab is already open
+    this.browser.tabs.query({ url: queuePageURL }).then((tabs) => {
+      if (tabs.length > 0) {
+        const [tab] = tabs;
+        this.browser.tabs.update(tab.id, { active: true });
+        // this.browser.tabs.reload(tab.id);
+        window.close();
       } else {
-        // check if query tab is already open
-        this.browser.tabs.query({ url: pageURL }).then((tabs) => {
-          if (tabs.length > 0) {
-            const [tab] = tabs;
-            this.browser.tabs.update(tab.id, { active: true });
-            // this.browser.tabs.reload(tab.id);
-            window.close();
-          } else {
-            this.createTab(queuePageURL);
-          }
-        }, (error) => {
-          this.createTab(queuePageURL);
-        });
+        this.createTab(queuePageURL);
       }
     }, (error) => {
       this.createTab(queuePageURL);
