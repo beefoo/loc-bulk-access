@@ -37,12 +37,12 @@ const apiResponseValidator = (apiResponse) => {
       }
       resp.uid = Utilities.stringToId(`${resp.title}-${resp.facets.join('-').replaceAll(':', '-')}`);
     }
-    if ('uid' in resp) {
-      // max 80 characters
-      resp.uid = resp.uid.slice(0, 80);
-      // add timestamp
-      resp.uid = Utilities.stringToId(`${resp.uid}-${Utilities.getTimeString()}`);
-    }
+  }
+  if ('uid' in resp) {
+    // max 80 characters
+    resp.uid = resp.uid.slice(0, 80);
+    // add timestamp
+    resp.uid = Utilities.stringToId(`${resp.uid}-${Utilities.getTimeString(false)}`);
   }
   return resp;
 };
@@ -193,6 +193,7 @@ const parseResources = (item, apiItem, apiResources = []) => {
     fileExtension,
     filename: `${item.id}.${fileExtension}`,
     status: 'queued',
+    attempts: 0,
   });
   // TODO: retrieve all resources
   return resp;

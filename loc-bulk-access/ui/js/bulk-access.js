@@ -10,6 +10,7 @@ class BulkAccess {
       maxLogCount: 500,
       parseAPIResponse: (apiResponse) => false,
       timeBetweenRequests: 1000,
+      timeBetweenAssetDownloadAttempts: 2000,
     };
     this.options = Object.assign(defaults, options);
     this.init();
@@ -177,6 +178,52 @@ class BulkAccess {
     });
   }
 
+  downloadItemAsset(itemIndex, resourceIndex, url, resourcePath) {
+    const i = itemIndex;
+    const j = resourceIndex;
+
+    // trigger download
+    this.browser.downloads.download({
+      conflictAction: 'overwrite',
+      filename: resourcePath,
+      saveAs: false,
+      url,
+    // on download start
+    }).then((id) => {
+      this.state.queue[i].resources[j].downloadId = id;
+      this.state.queue[i].resources[j].status = 'in_progress';
+      this.state.queue[i].resources[j].attempts += 1;
+      this.saveState();
+      const resourceCount = this.state.queue[i].resources.length;
+      this.logMessage(`Downloading asset ${resourcePath} (${j + 1} of ${resourceCount})`, 'notice', j > 0);
+    // on download interrupt
+    }, (error) => {
+      if (!this.isInProgress) return;
+      this.state.queue[i].resources[j].status = 'error';
+      this.state.queue[i].resources[j].attempts += 1;
+      // max attempts reached; skip
+      if (this.state.queue[i].resources[j].attempts > this.options.maxDownloadAttempts) {
+        this.state.queue[i].resources[j].status = 'completed';
+        this.state.queue[i].resources[j].error = error;
+        this.logMessage(`Max attempts to download ${url} reached. Skipping.`, 'error');
+        setTimeout(() => {
+          this.resumeQueue();
+        }, this.options.timeBetweenAssetDownloadAttempts);
+      // otherwise try again
+      } else {
+        this.logMessage(`Download of ${url} was interrupted. Retrying.`, 'error');
+        setTimeout(() => {
+          this.resumeQueue();
+        }, this.options.timeBetweenAssetDownloadAttempts);
+      }
+    });
+
+    // save state
+    this.state.queue[i].status = 'downloading assets';
+    this.saveState();
+    this.renderQueue();
+  }
+
   downloadQueueItemData(i, dataFilename) {
     const { settings } = this.state;
     const qitem = this.state.queue[i];
@@ -215,7 +262,7 @@ class BulkAccess {
     // on download interrupt
     }, (error) => {
       if (!this.isInProgress) return;
-      this.logMessage(`Download of ${dataFilename} was interrupted. Retrying.`);
+      this.logMessage(`Download of ${dataFilename} was interrupted. Retrying.`, 'error');
       this.resumeQueue();
     });
 
@@ -262,7 +309,7 @@ class BulkAccess {
       tag, text, time, type,
     };
     const logCount = this.state.log.length;
-    if (replace && logCount > 0) this.state.log[0] = logData;
+    if (replace && logCount > 0 && this.state.log[0].type !== 'error') this.state.log[0] = logData;
     else this.state.log.unshift(logData);
 
     // limit the length of the log
@@ -296,6 +343,20 @@ class BulkAccess {
     addToQueueEl.disabled = true;
     this.showQueueButton();
     this.setBadgeText(this.state.queue.length);
+  }
+
+  onDownloadedAsset(dlItem, itemIndex, resourceIndex) {
+    const i = itemIndex;
+    const j = resourceIndex;
+    const resourceCount = this.state.queue[i].resources.length;
+    this.state.queue[i].resources[j].status = 'completed';
+    this.saveState();
+    this.logMessage(`Downloaded asset ${dlItem.filename} (${j + 1} of ${resourceCount})`, 'notice', true);
+    if (this.isInProgress) {
+      setTimeout(() => {
+        this.resumeQueue();
+      }, this.options.timeBetweenAssetDownloadAttempts);
+    }
   }
 
   onDownloadedQueueItemData(i) {
@@ -665,7 +726,7 @@ class BulkAccess {
     // all metadata has been retrieved, and data download option is in the settings
     if (['retrieved data', 'downloading data'].includes(qitem.status) && ['data', 'both'].includes(settings.downloadOption)) {
       // check to see if file already exists in downloads
-      const dataFilename = `${qitem.item.uid}-${Utilities.getTimeString(false)}.${settings.dataFormat}`;
+      const dataFilename = `${qitem.item.uid}.${settings.dataFormat}`;
       const searchQuery = 'dataDownloadId' in qitem ? { id: qitem.dataDownloadId } : { filename: dataFilename };
 
       this.browser.downloads.search(searchQuery).then((downloads) => {
@@ -719,6 +780,71 @@ class BulkAccess {
       this.saveState();
       this.renderQueue();
       this.resumeQueue();
+      return;
+    }
+
+    // start to download assets if data option is "both" and we have downloaded our data
+    // or if data option is "assets" and we retrieved all the metadata
+    if ((qitem.status === 'downloaded data' && settings.downloadOption === 'both')
+        || (qitem.status === 'retrieved data' && settings.downloadOption === 'assets')) {
+      const { resources } = qitem;
+      const nextResourceIndex = resources.findIndex((resource) => resource.status !== 'completed');
+
+      // no resources left to download, mark as complete
+      if (nextResourceIndex < 0) {
+        this.state.queue[i].status = 'completed';
+        this.state.queue[i].selected = false;
+        this.saveState();
+        this.renderQueue();
+        this.resumeQueue();
+        return;
+      }
+
+      // check to see if asset is already being downloaded
+      const j = nextResourceIndex;
+      const nextResource = resources[j];
+      const resourcePath = `${qitem.item.uid}/${nextResource.filename}`;
+      const searchQuery = 'downloadId' in nextResource ? { id: nextResource.downloadId } : { filename: resourcePath };
+      this.browser.downloads.search(searchQuery).then((downloads) => {
+        // check if paused before the request was finished
+        if (!this.isInProgress) return;
+
+        // check to see if it is in progress
+        const inProgress = downloads.find((dlItem) => dlItem.state === 'in_progress');
+        if (inProgress !== undefined) {
+          this.state.queue[i].status = 'downloading assets';
+          this.state.queue[i].resources[j].status = 'in_progress';
+          this.saveState();
+          this.renderQueue();
+          return;
+        }
+
+        // check to see if it's complete and still exists
+        const complete = downloads.find((dlItem) => dlItem.state === 'complete' && dlItem.exists);
+        if (complete !== undefined) {
+          this.onDownloadedAsset(complete, i, j);
+          return;
+        }
+
+        // check to see if it's interrupted or paused and can resume
+        const interrupted = downloads.find((dlItem) => (dlItem.state === 'interrupted' || dlItem.paused) && dlItem.canResume);
+        if (interrupted !== undefined) {
+          this.browser.downloads.resume(interrupted.id);
+          this.state.queue[i].status = 'downloading assets';
+          this.state.queue[i].resources[j].status = 'in_progress';
+          this.saveState();
+          this.renderQueue();
+          this.logMessage(`Resuming asset download of ${resourcePath}`);
+          return;
+        }
+
+        // otherwise, download asset from scratch
+        this.downloadItemAsset(i, j, nextResource.url, resourcePath);
+      }, (error) => {
+        // check if paused before the request was finished
+        if (!this.isInProgress) return;
+        this.downloadItemAsset(i, j, nextResource.url, resourcePath);
+      });
     }
   }
 
