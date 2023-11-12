@@ -513,13 +513,25 @@ class BulkAccess {
     });
   }
 
+  pauseActiveDownloads() {
+    const { queue } = this.state;
+    const activeDownloads = queue.map((item) => {
+      if (!('resources' in item)) return [];
+      return item.resources.filter((resource) => resource.status === 'in_progress' && 'downloadId' in resource);
+    }).flat();
+    if (activeDownloads.length === 0) return;
+    activeDownloads.forEach((resource) => {
+      this.browser.downloads.pause(resource.downloadId);
+    });
+  }
+
   pauseQueue(force = false) {
     if (force === false && this.isInProgress) return;
     if (force === true) this.isInProgress = false;
     this.renderQueueButton();
     this.renderQueue();
     this.constructor.disableInputs(false);
-    // TODO: pause current active asset download
+    this.pauseActiveDownloads();
   }
 
   pruneQueue() {
