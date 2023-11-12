@@ -186,15 +186,25 @@ const parseResources = (item, apiItem, apiResources = []) => {
     if (item.online_formats.includes(sformat)) format = sformat;
   });
   const fileExtension = Utilities.getFileExtension(item.resource_url);
-  // for now, just add one resource
-  resp.push({
+  const resource = {
     url: item.resource_url,
     format,
     fileExtension,
     filename: `${item.id}.${fileExtension}`,
     status: 'queued',
     attempts: 0,
+  };
+  // generate different size resources for images
+  const imageURLs = parseField(apiItem, 'image_url', 'array', []);
+  const imgCount = imageURLs.length;
+  ['smallUrl', 'mediumUrl', 'largeUrl'].forEach((urlKey) => {
+    if (format !== 'image') resource[urlKey] = resource.url;
+    else if (urlKey === 'largeUrl') resource[urlKey] = imageURLs[imgCount - 1];
+    else if (urlKey === 'smallUrl') resource[urlKey] = imageURLs[0];
+    else resource[urlKey] = imageURLs[parseInt(Math.round(0.5 * (imgCount - 1)), 10)];
   });
+  // for now, just add one resource
+  resp.push(resource);
   // TODO: retrieve all resources
   return resp;
 };
