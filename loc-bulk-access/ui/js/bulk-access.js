@@ -181,6 +181,18 @@ class BulkAccess {
   downloadItemAsset(itemIndex, resourceIndex, url, resourcePath) {
     const i = itemIndex;
     const j = resourceIndex;
+    const resource = this.state.queue[i].resources[j];
+
+    // check to see if we reached too many attempts
+    if (resource.attempts >= this.options.maxDownloadAttempts) {
+      this.state.queue[i].resources[j].status = 'completed';
+      this.state.queue[i].resources[j].skipped = true;
+      this.logMessage(`Max attempts to download ${url} reached. Skipping.`, 'error');
+      setTimeout(() => {
+        this.resumeQueue();
+      }, this.options.timeBetweenAssetDownloadAttempts);
+      return;
+    }
 
     // trigger download
     this.browser.downloads.download({
@@ -196,27 +208,19 @@ class BulkAccess {
       this.state.queue[i].resources[j].attempts += 1;
       this.saveState();
       const resourceCount = this.state.queue[i].resources.length;
-      this.logMessage(`Downloading asset ${resourcePath} (${j + 1} of ${resourceCount})`, 'notice', j > 0);
+      const { attempts } = this.state.queue[i].resources[j];
+      const attemptString = attempts > 1 ? ` - attempt #${attempts}` : '';
+      this.logMessage(`Downloading asset ${resourcePath} (${j + 1} of ${resourceCount})${attemptString}`, 'notice', j > 0);
     // on download interrupt
     }, (error) => {
       if (!this.isInProgress) return;
       this.state.queue[i].resources[j].status = 'error';
+      this.state.queue[i].resources[j].error = error;
       this.state.queue[i].resources[j].attempts += 1;
-      // max attempts reached; skip
-      if (this.state.queue[i].resources[j].attempts > this.options.maxDownloadAttempts) {
-        this.state.queue[i].resources[j].status = 'completed';
-        this.state.queue[i].resources[j].error = error;
-        this.logMessage(`Max attempts to download ${url} reached. Skipping.`, 'error');
-        setTimeout(() => {
-          this.resumeQueue();
-        }, this.options.timeBetweenAssetDownloadAttempts);
-      // otherwise try again
-      } else {
-        this.logMessage(`Download of ${url} was interrupted. Retrying.`, 'error');
-        setTimeout(() => {
-          this.resumeQueue();
-        }, this.options.timeBetweenAssetDownloadAttempts);
-      }
+      this.logMessage(`Download of ${url} was interrupted. Retrying.`, 'error');
+      setTimeout(() => {
+        this.resumeQueue();
+      }, this.options.timeBetweenAssetDownloadAttempts);
     });
 
     // save state
@@ -418,8 +422,19 @@ class BulkAccess {
 
     // state has changed to interrupted
     if (delta.state && delta.state.current === 'interrupted') {
-      if (this.isInProgress) this.pauseQueue(true);
-      this.logMessage(`Download of ${filename} interrupted. Pausing queue.`, 'error');
+      // if queue is in progress, try again after a pause
+      if (this.isInProgress) {
+        if (isAsset) {
+          setTimeout(() => {
+            this.resumeQueue();
+          }, this.options.timeBetweenAssetDownloadAttempts);
+        } else {
+          setTimeout(() => {
+            this.resumeQueue();
+          }, this.options.timeBetweenRequests);
+        }
+      }
+      this.logMessage(`Download of ${filename} interrupted.`, 'error');
     }
 
     // download was paused
