@@ -842,9 +842,19 @@ class BulkAccess {
 
     // start to download assets if data option is "both" and we have downloaded our data
     // or if data option is "assets" and we retrieved all the metadata
-    if ((qitem.status === 'downloaded data' && settings.downloadOption === 'both')
-        || (qitem.status === 'retrieved data' && settings.downloadOption === 'assets')) {
-      const { resources } = qitem;
+    if ((['downloaded data', 'downloading assets'].includes(qitem.status) && settings.downloadOption === 'both')
+        || (['retrieved data', 'downloading assets'].includes(qitem.status) && settings.downloadOption === 'assets')) {
+      // retrieve resources from API requests if not set
+      let { resources } = qitem;
+      if (!resources) {
+        resources = qitem.apiRequests.map((req) => {
+          const reqResources = ('resources' in req.response) ? req.response.resources : [];
+          return reqResources;
+        }).flat(2);
+        this.state.queue[i].resources = resources;
+        this.saveState();
+      }
+
       const nextResourceIndex = resources.findIndex((resource) => resource.status !== 'completed');
 
       // no resources left to download, mark as complete
