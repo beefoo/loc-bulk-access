@@ -191,6 +191,7 @@ class BulkAccess {
     // on download start
     }).then((id) => {
       this.state.queue[i].resources[j].downloadId = id;
+      this.state.queue[i].resources[j].filePath = resourcePath;
       this.state.queue[i].resources[j].status = 'in_progress';
       this.state.queue[i].resources[j].attempts += 1;
       this.saveState();
@@ -345,13 +346,14 @@ class BulkAccess {
     this.setBadgeText(this.state.queue.length);
   }
 
-  onDownloadedAsset(dlItem, itemIndex, resourceIndex) {
+  onDownloadedAsset(itemIndex, resourceIndex) {
     const i = itemIndex;
     const j = resourceIndex;
     const resourceCount = this.state.queue[i].resources.length;
+    const resource = this.state.queue[i].resources[j];
     this.state.queue[i].resources[j].status = 'completed';
     this.saveState();
-    this.logMessage(`Downloaded asset ${dlItem.filename} (${j + 1} of ${resourceCount})`, 'notice', true);
+    this.logMessage(`Downloaded asset ${resource.filePath} (${j + 1} of ${resourceCount})`, 'notice', true);
     if (this.isInProgress) {
       setTimeout(() => {
         this.resumeQueue();
@@ -370,15 +372,42 @@ class BulkAccess {
   onDownloadsChanged(delta) {
     const { queue } = this.state;
     const downloadId = delta.id;
-    const i = queue.findIndex((item) => item.dataDownloadId === downloadId);
-    if (i < 0) return;
+    let i = queue.findIndex((item) => item.dataDownloadId === downloadId);
+    let j;
+    let isAsset = false;
+    // not data download; check to see if asset download
+    if (i < 0) {
+      const assets = queue.map((item, ii) => {
+        if (!('resources' in item)) return [];
+        return item.resources.map((resource, jj) => {
+          const dlId = 'downloadId' in resource ? resource.downloadId : false;
+          return {
+            itemIndex: ii,
+            resourceIndex: jj,
+            downloadId: dlId,
+          };
+        });
+      }).flat();
+      const foundAsset = assets.find((asset) => asset.downloadId === downloadId);
+      if (foundAsset) {
+        isAsset = true;
+        i = foundAsset.itemIndex;
+        j = foundAsset.resourceIndex;
+      } else return;
+    }
     const qItem = queue[i];
+    const resource = isAsset ? qItem.resources[j] : false;
+    const filename = resource !== false ? resource.url : qItem.dataFilename;
 
     // state has changed to complete
     if (delta.state && delta.state.current === 'complete') {
-      this.onDownloadedQueueItemData(i);
-      this.logMessage(`Downloaded data to ${qItem.dataFilename} <button class="show-download-folder" data-id="${downloadId}">open download folder</button>`, 'success', true);
-      if (this.isInProgress) this.resumeQueue();
+      if (isAsset) {
+        this.onDownloadedAsset(i, j);
+      } else {
+        this.onDownloadedQueueItemData(i);
+        this.logMessage(`Downloaded data to ${filename} <button class="show-download-folder" data-id="${downloadId}">open download folder</button>`, 'success', true);
+        if (this.isInProgress) this.resumeQueue();
+      }
       return;
     }
 
@@ -389,13 +418,13 @@ class BulkAccess {
 
     // state has changed to interrupted
     if (delta.state && delta.state.current === 'interrupted') {
-      this.pauseQueue(true);
-      this.logMessage(`Download of ${qItem.dataFilename} interrupted. Pausing queue.`, 'error');
+      if (this.isInProgress) this.pauseQueue(true);
+      this.logMessage(`Download of ${filename} interrupted. Pausing queue.`, 'error');
     }
 
     // download was paused
     if (delta.paused && delta.paused.current === true) {
-      this.pauseQueue(true);
+      if (this.isInProgress) this.pauseQueue(true);
     }
   }
 
@@ -490,6 +519,7 @@ class BulkAccess {
     this.renderQueueButton();
     this.renderQueue();
     this.constructor.disableInputs(false);
+    // TODO: pause current active asset download
   }
 
   pruneQueue() {
@@ -822,7 +852,7 @@ class BulkAccess {
         // check to see if it's complete and still exists
         const complete = downloads.find((dlItem) => dlItem.state === 'complete' && dlItem.exists);
         if (complete !== undefined) {
-          this.onDownloadedAsset(complete, i, j);
+          this.onDownloadedAsset(i, j);
           return;
         }
 
