@@ -472,8 +472,13 @@ class BulkAccess {
 
   onStartup() {
     const statePromise = this.loadState();
-    statePromise.then((state) => {
-      this.setBadgeText(state.queue.length);
+    const tabsPromise = this.browser.tabs.query({ active: true, currentWindow: true });
+
+    Promise.all([tabsPromise, statePromise]).then((values) => {
+      const [tabs, state] = values;
+      const apiURL = this.options.getAPIURL(tabs[0].url);
+      if (apiURL !== false || state.queue.length > 0) this.setBadgeText(state.queue.length);
+      else this.setBadgeText('');
     });
   }
 
@@ -969,8 +974,10 @@ class BulkAccess {
     this.renderQueueButton();
   }
 
-  setBadgeText(count) {
-    const text = count > 0 ? count.toLocaleString() : '+';
+  setBadgeText(numberOrString) {
+    let text = numberOrString;
+    // if it is a number, parse it as a number or add a plus-sign if zero
+    if (!(typeof text === 'string') && !Number.isNaN(text)) text = text > 0 ? text.toLocaleString() : '+';
     this.browser.browserAction.setBadgeText({ text });
   }
 
