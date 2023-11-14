@@ -851,7 +851,12 @@ class BulkAccess {
           const reqResources = ('resources' in req.response) ? req.response.resources : [];
           return reqResources;
         }).flat(2);
-        this.state.queue[i].resources = resources;
+        // set URL based on asset size setting
+        this.state.queue[i].resources = resources.map((resource) => {
+          const rcopy = resource;
+          rcopy.url = resource[`${settings.assetSize}Url`];
+          return rcopy;
+        });
         this.saveState();
       }
 

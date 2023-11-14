@@ -197,10 +197,10 @@ const parseResources = (item, apiItem, apiResources = []) => {
   // generate different size resources for images
   const imageURLs = parseField(apiItem, 'image_url', 'array', []);
   const imgCount = imageURLs.length;
-  ['smallUrl', 'mediumUrl', 'largeUrl'].forEach((urlKey) => {
+  ['smallestUrl', 'mediumUrl', 'largestUrl'].forEach((urlKey) => {
     if (format !== 'image') resource[urlKey] = resource.url;
-    else if (urlKey === 'largeUrl') resource[urlKey] = imageURLs[imgCount - 1];
-    else if (urlKey === 'smallUrl') resource[urlKey] = imageURLs[0];
+    else if (urlKey === 'largestUrl') resource[urlKey] = imageURLs[imgCount - 1];
+    else if (urlKey === 'smallestUrl') resource[urlKey] = imageURLs[0];
     else resource[urlKey] = imageURLs[parseInt(Math.round(0.5 * (imgCount - 1)), 10)];
   });
   // for now, just add one resource
