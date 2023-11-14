@@ -110,6 +110,11 @@ class BulkAccess {
     clearLogButton.onclick = (e) => {
       this.clearLog();
     };
+
+    // prevent page from being closed if queue is in progress
+    window.addEventListener('beforeunload', (e) => {
+      if (this.isInProgress) e.preventDefault();
+    });
   }
 
   addToQueue(item) {

@@ -238,7 +238,7 @@ fieldset.toggle-target.active {
   overflow: hidden;
   overflow-y: auto;
   position: relative;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 .queue-log-toolbar {
   display: flex;
@@ -252,6 +252,7 @@ fieldset.toggle-target.active {
   background: rgba(255, 255, 255, 0.1);
   padding: 0 4px;
   box-sizing: border-box;
+  border-bottom: 1px solid var(--base-darker);
 }
 .queue-log-toolbar h3 {
   flex-grow: 1;
@@ -269,7 +270,7 @@ fieldset.toggle-target.active {
 .queue-log p .time {
   font-style: italic;
   color: var(--base-light);
-  font-size: 0.9rem;
+  font-size: 0.9em;
   display: inline-block;
   vertical-align: middle;
   margin-right: 12px;
@@ -280,7 +281,7 @@ fieldset.toggle-target.active {
 }
 .queue-log p.done {
   font-weight: bold;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 255, 0, 0.05);
 }
 .queue-log p.error {
   color: var(--error-light);
