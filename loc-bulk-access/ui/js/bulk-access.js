@@ -19,8 +19,6 @@ export default class BulkAccess {
 
   init() {
     this.browser = this.options.browser;
-    this.el = document.getElementById('main');
-    this.messageEl = document.getElementById('message');
     this.defaultState = {
       log: [],
       queue: [],
@@ -463,6 +461,8 @@ export default class BulkAccess {
   }
 
   onPopup() {
+    this.el = document.getElementById('main');
+    this.messageEl = document.getElementById('message');
     this.addToQueueEl = document.getElementById('add-queue-button');
     this.viewQueueEl = document.getElementById('view-queue-button');
     this.currentQueueItem = false;
@@ -503,6 +503,8 @@ export default class BulkAccess {
 
   onViewQueue() {
     this.isInProgress = false;
+    this.el = document.getElementById('main');
+    this.messageEl = document.getElementById('message');
     this.queueContainer = document.getElementById('queue-tbody');
     this.toggleQueueButton = document.getElementById('toggle-queue');
     this.logContainer = document.getElementById('queue-log');
@@ -525,7 +527,7 @@ export default class BulkAccess {
   }
 
   openQueuePage() {
-    const queuePageURL = browser.runtime.getURL('ui/queue.html');
+    const queuePageURL = this.browser.runtime.getURL('ui/queue.html');
     // check if query tab is already open
     this.browser.tabs.query({ url: queuePageURL }).then((tabs) => {
       if (tabs.length > 0) {

@@ -12,6 +12,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  min-width: 320px;
 }
 button.button {
   display: none;

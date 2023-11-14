@@ -15,7 +15,7 @@
     "default_popup": "ui/popup.html"
   },
   "background": {
-    "scripts": ["ui/js/background.js"],
+    "service_worker": "ui/js/background.js",
     "type": "module"
   },  
   "permissions": [
