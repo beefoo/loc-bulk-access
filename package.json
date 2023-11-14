@@ -2,9 +2,15 @@
   "name": "loc-bulk-access",
   "description": "Browser extension to enable bulk access to Library of Congress digital collections data and assets",
   "scripts": {
-    "listen": "web-ext run --source-dir \"loc-bulk-access/\" --devtools"
+    "build-chrome": "node use.js chrome && node build.js chrome",
+    "build-firefox": "node use.js firefox && node build.js firefox",
+    "listen": "web-ext run --source-dir \"loc-bulk-access/\" --devtools",
+    "use-chrome": "node use.js chrome",
+    "use-firefox": "node use.js firefox"
   },
-  "dependencies": {},
+  "dependencies": {
+    "archiver": "^6.0.1"
+  },
   "devDependencies": {
     "eslint": "^8.49.0",
     "eslint-config-airbnb-base": "^15.0.0",
