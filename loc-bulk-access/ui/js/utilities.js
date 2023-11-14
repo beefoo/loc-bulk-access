@@ -1,4 +1,4 @@
-class Utilities {
+export default class Utilities {
   static appendParamsToURL(urlString, params) {
     const url = new URL(urlString);
     const { searchParams } = url;

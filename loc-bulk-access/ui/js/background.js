@@ -1,18 +1,18 @@
-(function initPage() {
-  const config = {
-    getAPIURL,
-  };
-  const app = new BulkAccess(config);
+import browserAPI from './globals.js';
+import BulkAccess from './bulk-access.js';
+import LOC from './loc.js';
 
-  app.browser.runtime.onStartup.addListener(() => {
-    app.onStartup();
-  });
+browserAPI.runtime.onStartup.addListener(() => {
+  const app = new BulkAccess({ browser: browserAPI, getAPIURL: LOC.getAPIURL });
+  app.onStartup();
+});
 
-  app.browser.tabs.onActivated.addListener(() => {
-    app.onStartup();
-  });
+browserAPI.tabs.onActivated.addListener(() => {
+  const app = new BulkAccess({ browser: browserAPI, getAPIURL: LOC.getAPIURL });
+  app.onStartup();
+});
 
-  app.browser.tabs.onUpdated.addListener(() => {
-    app.onStartup();
-  });
-}());
+browserAPI.tabs.onUpdated.addListener(() => {
+  const app = new BulkAccess({ browser: browserAPI, getAPIURL: LOC.getAPIURL });
+  app.onStartup();
+});

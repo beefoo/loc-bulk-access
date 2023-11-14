@@ -1,28 +1,35 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "LC Bulk Access",
   "version": "1.0",
+  "author": "bfoo@loc.gov",
   "description": "Enable bulk access to Library of Congress digital collections data and assets",
   "icons": {
-    "48": "icons/loc-bulk-access-48x48.png",
-    "96": "icons/loc-bulk-access-96x96.png"
+    "48": "icons/loc-48x48.png",
+    "96": "icons/loc-bulk-access-96x96.png",
+    "128": "icons/loc-bulk-access-128x128.png"
   },
-  "browser_action": {
+  "action": {
     "default_icon": "icons/loc-32x32.png",
     "default_title": "Library of Congress Bulk Access",
     "default_popup": "ui/popup.html"
   },
   "background": {
-    "page": "ui/background.html",
-    "persistent": false
+    "scripts": ["js/background.js"],
+    "persistent": false,
+    "service_worker": "js/background.js",
+    "type": "module"
   },  
   "permissions": [
-    "*://*.loc.gov/*",
-    "storage",
-    "unlimitedStorage",
     "activeTab",
     "downloads",
     "downloads.open",
+    "storage",
+    "unlimitedStorage",
     "webRequest"
+  ],
+  "host_permissions": [
+    "*://*.loc.gov/*",
+    "*://loc.gov/*"
   ]
 }

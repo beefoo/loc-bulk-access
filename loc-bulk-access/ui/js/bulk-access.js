@@ -1,9 +1,10 @@
-class BulkAccess {
+import Utilities from './utilities.js';
+
+export default class BulkAccess {
   constructor(options = {}) {
     const defaults = {
       apiItemsPerPage: 150,
       apiResponseValidator: (apiResponse) => ({ valid: false, type: 'Unknown', count: 0 }),
-      browser: 'firefox',
       getAPIURL: (url, count = false) => url,
       maxArchivedQueueItems: 50,
       maxDownloadAttempts: 3,
@@ -17,7 +18,7 @@ class BulkAccess {
   }
 
   init() {
-    this.browser = this.options.browser === 'chrome' ? chrome : browser;
+    this.browser = this.options.browser;
     this.el = document.getElementById('main');
     this.messageEl = document.getElementById('message');
     this.defaultState = {
@@ -756,6 +757,7 @@ class BulkAccess {
       // we reached too many attempts
       if (attempts > maxDownloadAttempts) {
         this.state.queue[i].status = 'data retrieval error';
+        this.state.queue[i].apiRequests[j].attempts = 0;
         this.saveState();
         this.logMessage(`Reached max attempts for API request ${nextActiveRequest.url}. Stopping queue. The website might be down or we reached an data request limit. Please try again later.`, 'error');
         this.pauseQueue(true);
@@ -789,6 +791,7 @@ class BulkAccess {
           }, timeBetweenRequests);
         // error in the request
         }).catch((error) => {
+          this.logMessage(error, 'error');
           // check if paused before the request was finished
           if (!this.isInProgress) return;
           apiRequests[j].status = 'error';
@@ -996,7 +999,7 @@ class BulkAccess {
     let text = numberOrString;
     // if it is a number, parse it as a number or add a plus-sign if zero
     if (!(typeof text === 'string') && !Number.isNaN(text)) text = text > 0 ? text.toLocaleString() : '+';
-    this.browser.browserAction.setBadgeText({ text });
+    this.browser.action.setBadgeText({ text });
   }
 
   setSettingOptionListeners(option) {
