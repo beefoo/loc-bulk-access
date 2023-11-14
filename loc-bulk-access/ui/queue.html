@@ -8,6 +8,7 @@
 
 <body>
   <div id="main" class="main queue-page is-loading">
+    <h1 class="visually-hidden">Library of Congress Bulk Access queue</h1>
     <table id="queue-table" class="queue-table">
       <thead>
         <tr>
@@ -25,6 +26,7 @@
       <tbody id="queue-tbody"></tbody>
     </table>
     <div class="queue-toolbar">
+      <h2 class="visually-hidden">Queue options</h2>
       <div class="queue-menu">
         <div class="queue-options">
           <fieldset id="download-option-fieldset">
@@ -86,7 +88,13 @@
           <button id="toggle-queue" class="toggle-queue">Start queue</button>
         </div>
       </div>
-      <div id="queue-log" class="queue-log"></div>
+      <div class="queue-log-container">
+        <div class="queue-log-toolbar">
+          <h3>Queue log</h3>
+          <button id="clear-log-button" class="clear-log">Clear all</button>
+        </div>
+        <div id="queue-log" class="queue-log"></div>
+      </div>
     </div>     
   </div>  
   

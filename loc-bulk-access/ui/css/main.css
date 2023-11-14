@@ -228,22 +228,43 @@ fieldset.toggle-target.active {
   display: inline-block;
 }
 
-.queue-log {
+.queue-log-container {
   width: 100%;
   box-sizing: border-box;
-  padding: 0;
+  padding: 28px 0 0 0;
   background: var(--base-darkest);
   color: white;
-  font-size: 0.9rem;
-  font-family: 'Courier New', Courier, monospace;
   max-height: 300px;
   overflow: hidden;
   overflow-y: auto;
+  position: relative;
+  font-size: 0.9rem;
+}
+.queue-log-toolbar {
+  display: flex;
+  align-items: center;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 28px;
+  line-height: 28px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0 4px;
+  box-sizing: border-box;
+}
+.queue-log-toolbar h3 {
+  flex-grow: 1;
+  margin: 0;
+  font-size: 0.9rem;
+}
+.queue-log {
+  font-family: 'Courier New', Courier, monospace;
 }
 .queue-log p {
   margin: 0;
   padding: 3px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1)
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 .queue-log p .time {
   font-style: italic;
@@ -253,8 +274,13 @@ fieldset.toggle-target.active {
   vertical-align: middle;
   margin-right: 12px;
 }
-.queue-log p.success {
+.queue-log p.success,
+.queue-log p.done {
   color: var(--success-light);
+}
+.queue-log p.done {
+  font-weight: bold;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 .queue-log p.error {
   color: var(--error-light);
@@ -262,9 +288,10 @@ fieldset.toggle-target.active {
 .queue-log p.notice {
   color: var(--notice-light);
 }
-.queue-log button {
+.queue-log-container button {
   font-size: 0.8rem;
   padding: 2px 4px;
+  margin: 0;
 }
 
 .queue-page input:disabled,

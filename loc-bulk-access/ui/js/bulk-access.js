@@ -104,6 +104,12 @@ class BulkAccess {
         this.showDownloadFolder(parseInt(showDownloadFolder.getAttribute('data-id'), 10));
       }
     };
+
+    // listen for clear log
+    const clearLogButton = document.getElementById('clear-log-button');
+    clearLogButton.onclick = (e) => {
+      this.clearLog();
+    };
   }
 
   addToQueue(item) {
@@ -163,6 +169,12 @@ class BulkAccess {
         reject(new Error('Bulk access tool only works on www.loc.gov URLs.'));
       }
     });
+  }
+
+  clearLog() {
+    this.state.log = [];
+    this.saveState();
+    this.renderLog();
   }
 
   createTab(url) {
@@ -355,9 +367,10 @@ class BulkAccess {
     const j = resourceIndex;
     const resourceCount = this.state.queue[i].resources.length;
     const resource = this.state.queue[i].resources[j];
+    const downloadId = 'downloadId' in resource ? resource.downloadId : -1;
     this.state.queue[i].resources[j].status = 'completed';
     this.saveState();
-    this.logMessage(`Downloaded asset ${resource.filePath} (${j + 1} of ${resourceCount})`, 'notice', true);
+    this.logMessage(`Downloaded asset ${resource.filePath} (${j + 1} of ${resourceCount}) <button class="show-download-folder" data-id="${downloadId}">open download folder</button>`, 'notice', true);
     if (this.isInProgress) {
       setTimeout(() => {
         this.resumeQueue();
@@ -676,7 +689,7 @@ class BulkAccess {
     // no more; we are finished!
     if (nextActiveIndex < 0) {
       this.pauseQueue(true);
-      this.logMessage('Queue finished!', 'success');
+      this.logMessage('Queue finished!', 'done');
       return;
     }
 
@@ -1001,8 +1014,9 @@ class BulkAccess {
     };
   }
 
-  showDownloadFolder(downloadId) {
-    this.browser.downloads.show(downloadId);
+  showDownloadFolder(downloadId = -1) {
+    if (downloadId < 0) this.browser.downloads.showDefaultFolder();
+    else this.browser.downloads.show(downloadId);
   }
 
   showQueueButton() {
