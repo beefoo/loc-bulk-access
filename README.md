@@ -20,13 +20,10 @@ You can also find these instructions on the [Chrome Extension Developer website]
 
 ### Firefox Installation
 
-1. Download the latest [Firefox extension](https://github.com/LibraryOfCongress/loc-bulk-access/releases/download/v0.0.1/loc-bulk-access-firefox-0.0.1.zip) and unpack it. Note: the latest and past versions of the extensions will be listed in the repository's [releases section](https://github.com/LibraryOfCongress/loc-bulk-access/releases).
-2. Type `about:debugging` in the Firefox URL bar.
-3. Click the **Load Temporary Add-on** button, then select any file in the unzipped extension's directory.
-4. Click **Extensions menu puzzle button** next to your search bar, and you should see the "LC Bulk Access" extension listed there, which you can pin to your toolbar.
-5. The extension now installs, and remains installed until you restart Firefox.
-
-You can also find these instructions on the [Mozilla Extension Developer website](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Your_first_WebExtension#installing)
+1. Download the latest [Firefox extension](https://github.com/LibraryOfCongress/loc-bulk-access/releases/download/v0.0.1/loc-bulk-access-firefox-0.0.1.zip). Note: the latest and past versions of the extensions will be listed in the repository's [releases section](https://github.com/LibraryOfCongress/loc-bulk-access/releases).
+2. Type `about:addons` in the Firefox URL bar.
+3. Next to "Manage Your Extensions", click the gear icon, select **Install Add-on From File**, and select the zipped file that you downloaded from step 1.
+4. Once installed, click **Extensions menu puzzle button** next to your search bar, and you should see the "LC Bulk Access" extension listed there, which you can pin to your toolbar.
 
 ## Using the extension
 
@@ -50,7 +47,7 @@ The latest versions of Chrome and Firefox extension APIs are nearly the same, so
     npm install
     ```
 
-4. Now you can launch this extension using the following command:
+4. Now you can launch this extension using Firefox and web-ext using the following command:
 
     ```
     npm run listen
