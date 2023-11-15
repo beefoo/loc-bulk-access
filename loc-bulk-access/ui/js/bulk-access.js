@@ -687,9 +687,7 @@ export default class BulkAccess {
     if (!this.isInProgress) return;
 
     this.renderQueueButton();
-
     const { queue, settings } = this.state;
-    const { maxDownloadAttempts, parseAPIResponse, timeBetweenRequests } = this.options;
 
     // retrieve the next active item in the queue
     const nextActiveIndex = queue.findIndex((qitem) => this.constructor.isQueueItemActive(qitem));
@@ -706,155 +704,16 @@ export default class BulkAccess {
 
     const i = nextActiveIndex;
     const qitem = queue[i];
-    const { fullTitle } = qitem.item;
 
     // check to see if we need to download metadata
     if (['queued', 'retrieving data', 'data retrieval error'].includes(qitem.status)) {
-      const apiRequests = 'apiRequests' in qitem ? qitem.apiRequests : [];
-      // check to see if we have not yet made an API request yet
-      if (apiRequests.length === 0) {
-        apiRequests.push({
-          attempts: 0,
-          date: Date.now(),
-          index: 0,
-          response: false,
-          status: 'queued',
-          total: false,
-          url: qitem.item.apiURL,
-        });
-      }
-      let reqCount = apiRequests.length;
-      // retrieve the next API request
-      let nextActiveRequest = apiRequests.find((req) => req.status !== 'completed');
-      // all the API requests have been completed; check to see if there are any more
-      if (nextActiveRequest === undefined) {
-        const lastRequest = apiRequests[reqCount - 1];
-        // we have completed the API Requests
-        if (lastRequest.response.isLast) {
-          this.state.queue[i].status = 'retrieved data';
-          this.saveState();
-          this.resumeQueue();
-          return;
-        // otherwise, queue the next one
-        }
-        apiRequests.push({
-          attempts: 0,
-          date: Date.now(),
-          index: reqCount,
-          response: false,
-          status: 'queued',
-          total: lastRequest.total,
-          url: lastRequest.response.nextPageURL,
-        });
-        reqCount += 1;
-        nextActiveRequest = apiRequests[reqCount - 1];
-      }
-      // we're ready to make the next request
-      const j = nextActiveRequest.index;
-      const { index, total } = nextActiveRequest;
-      this.state.queue[i].status = 'retrieving data';
-      apiRequests[j].status = 'in progress';
-      apiRequests[j].attempts += 1;
-      const { attempts } = apiRequests[j];
-      // we reached too many attempts
-      if (attempts > maxDownloadAttempts) {
-        this.state.queue[i].status = 'data retrieval error';
-        this.state.queue[i].apiRequests[j].attempts = 0;
-        this.saveState();
-        this.logMessage(`Reached max attempts for API request ${nextActiveRequest.url}. Stopping queue. The website might be down or we reached an data request limit. Please try again later.`, 'error');
-        this.pauseQueue(true);
-        return;
-      }
-      this.renderQueue();
-      if (total !== false) this.logMessage(`Retrieving API data from "${fullTitle}" (request ${index + 1} of ${total})`, 'notice', (index > 0));
-      else this.logMessage(`Retrieving API data from "${fullTitle}" (first request)`);
-      // make the Request
-      fetch(nextActiveRequest.url)
-        .then((resp) => resp.json())
-        .then((resp) => {
-          // check if paused before the request was finished
-          if (!this.isInProgress) return;
-          const data = parseAPIResponse(resp);
-          // data successfully retrieved and parsed
-          if (data !== false) {
-            apiRequests[j].response = data;
-            apiRequests[j].total = data.total;
-            apiRequests[j].status = 'completed';
-          // error in parsing data
-          } else {
-            apiRequests[j].status = 'error';
-            this.logMessage(`Could not parse data from ${nextActiveRequest.url} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
-          }
-          // save the state and continue
-          this.state.queue[i].apiRequests = apiRequests.slice();
-          this.saveState();
-          setTimeout(() => {
-            this.resumeQueue();
-          }, timeBetweenRequests);
-        // error in the request
-        }).catch((error) => {
-          this.logMessage(error, 'error');
-          // check if paused before the request was finished
-          if (!this.isInProgress) return;
-          apiRequests[j].status = 'error';
-          this.logMessage(`Could not retrieve data from ${nextActiveRequest.url} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
-          // save the state and continue
-          this.state.queue[i].apiRequests = apiRequests.slice();
-          this.saveState();
-          setTimeout(() => {
-            this.resumeQueue();
-          }, timeBetweenRequests);
-        });
+      this.resumeQueueRequestData(i, qitem);
       return;
     }
 
     // all metadata has been retrieved, and data download option is in the settings
     if (['retrieved data', 'downloading data'].includes(qitem.status) && ['data', 'both'].includes(settings.downloadOption)) {
-      // check to see if file already exists in downloads
-      const dataFilename = `${qitem.item.uid}.${settings.dataFormat}`;
-      const searchQuery = 'dataDownloadId' in qitem ? { id: qitem.dataDownloadId } : { filename: dataFilename };
-
-      this.browser.downloads.search(searchQuery).then((downloads) => {
-        // check if paused before the request was finished
-        if (!this.isInProgress) return;
-
-        // check to see if it is in progress
-        const inProgress = downloads.find((dlItem) => dlItem.state === 'in_progress');
-        if (inProgress !== undefined) {
-          this.state.queue[i].status = 'downloading data';
-          this.saveState();
-          this.renderQueue();
-          return;
-        }
-
-        // check to see if it's complete and still exists
-        const complete = downloads.find((dlItem) => dlItem.state === 'complete' && dlItem.exists);
-        if (complete !== undefined) {
-          this.onDownloadedQueueItemData(i);
-          this.logMessage(`Data download of ${dataFilename} already completed <button class="show-download-folder" data-id="${dlItem.id}">open download folder</button>`, 'success');
-          this.resumeQueue();
-          return;
-        }
-
-        // check to see if it's interrupted or paused and can resume
-        const interrupted = downloads.find((dlItem) => (dlItem.state === 'interrupted' || dlItem.paused) && dlItem.canResume);
-        if (interrupted !== undefined) {
-          this.browser.downloads.resume(interrupted.id);
-          this.state.queue[i].status = 'downloading data';
-          this.saveState();
-          this.renderQueue();
-          this.logMessage(`Resuming data download of ${dataFilename}`);
-          return;
-        }
-
-        // otherwise, download the data
-        this.downloadQueueItemData(i, dataFilename);
-      }, (error) => {
-        // check if paused before the request was finished
-        if (!this.isInProgress) return;
-        this.downloadQueueItemData(i, dataFilename);
-      });
-
+      this.resumeQueueDownloadData(i, qitem);
       return;
     }
 
@@ -872,80 +731,233 @@ export default class BulkAccess {
     // or if data option is "assets" and we retrieved all the metadata
     if ((['downloaded data', 'downloading assets'].includes(qitem.status) && settings.downloadOption === 'both')
         || (['retrieved data', 'downloading assets'].includes(qitem.status) && settings.downloadOption === 'assets')) {
-      // retrieve resources from API requests if not set
-      let { resources } = qitem;
-      if (!resources) {
-        resources = qitem.apiRequests.map((req) => {
-          const reqResources = ('resources' in req.response) ? req.response.resources : [];
-          return reqResources;
-        }).flat(2);
-        // set URL based on asset size setting
-        this.state.queue[i].resources = resources.map((resource) => {
-          const rcopy = resource;
-          rcopy.url = resource[`${settings.assetSize}Url`];
-          return rcopy;
-        });
-        this.saveState();
-      }
+      this.resumeQueueDownloadAssets(i, qitem);
+    }
+  }
 
-      const nextResourceIndex = resources.findIndex((resource) => resource.status !== 'completed');
+  resumeQueueDownloadAssets(i, qitem) {
+    const { settings } = this.state;
+    // retrieve resources from API requests if not set
+    let { resources } = qitem;
+    if (!resources) {
+      resources = qitem.apiRequests.map((req) => {
+        const reqResources = ('resources' in req.response) ? req.response.resources : [];
+        return reqResources;
+      }).flat(2);
+      // set URL based on asset size setting
+      this.state.queue[i].resources = resources.map((resource) => {
+        const rcopy = resource;
+        rcopy.url = resource[`${settings.assetSize}Url`];
+        return rcopy;
+      });
+      this.saveState();
+    }
 
-      // no resources left to download, mark as complete
-      if (nextResourceIndex < 0) {
-        this.state.queue[i].status = 'completed';
-        this.state.queue[i].selected = false;
+    const nextResourceIndex = resources.findIndex((resource) => resource.status !== 'completed');
+
+    // no resources left to download, mark as complete
+    if (nextResourceIndex < 0) {
+      this.state.queue[i].status = 'completed';
+      this.state.queue[i].selected = false;
+      this.saveState();
+      this.renderQueue();
+      this.resumeQueue();
+      return;
+    }
+
+    // check to see if asset is already being downloaded
+    const j = nextResourceIndex;
+    const nextResource = resources[j];
+    const resourcePath = `${qitem.item.uid}/${nextResource.filename}`;
+    const searchQuery = 'downloadId' in nextResource ? { id: nextResource.downloadId } : { filename: resourcePath };
+    this.browser.downloads.search(searchQuery).then((downloads) => {
+      // check if paused before the request was finished
+      if (!this.isInProgress) return;
+
+      // check to see if it is in progress
+      const inProgress = downloads.find((dlItem) => dlItem.state === 'in_progress');
+      if (inProgress !== undefined) {
+        this.state.queue[i].status = 'downloading assets';
+        this.state.queue[i].resources[j].status = 'in_progress';
         this.saveState();
         this.renderQueue();
+        return;
+      }
+
+      // check to see if it's complete and still exists
+      const complete = downloads.find((dlItem) => dlItem.state === 'complete' && dlItem.exists);
+      if (complete !== undefined) {
+        this.onDownloadedAsset(i, j);
+        return;
+      }
+
+      // check to see if it's interrupted or paused and can resume
+      const interrupted = downloads.find((dlItem) => (dlItem.state === 'interrupted' || dlItem.paused) && dlItem.canResume);
+      if (interrupted !== undefined) {
+        this.browser.downloads.resume(interrupted.id);
+        this.state.queue[i].status = 'downloading assets';
+        this.state.queue[i].resources[j].status = 'in_progress';
+        this.saveState();
+        this.renderQueue();
+        this.logMessage(`Resuming asset download of ${resourcePath}`);
+        return;
+      }
+
+      // otherwise, download asset from scratch
+      this.downloadItemAsset(i, j, nextResource.url, resourcePath);
+    }, (error) => {
+      // check if paused before the request was finished
+      if (!this.isInProgress) return;
+      this.downloadItemAsset(i, j, nextResource.url, resourcePath);
+    });
+  }
+
+  resumeQueueDownloadData(i, qitem) {
+    const { settings } = this.state;
+    // check to see if file already exists in downloads
+    const dataFilename = `${qitem.item.uid}.${settings.dataFormat}`;
+    const searchQuery = 'dataDownloadId' in qitem ? { id: qitem.dataDownloadId } : { filename: dataFilename };
+
+    this.browser.downloads.search(searchQuery).then((downloads) => {
+      // check if paused before the request was finished
+      if (!this.isInProgress) return;
+
+      // check to see if it is in progress
+      const inProgress = downloads.find((dlItem) => dlItem.state === 'in_progress');
+      if (inProgress !== undefined) {
+        this.state.queue[i].status = 'downloading data';
+        this.saveState();
+        this.renderQueue();
+        return;
+      }
+
+      // check to see if it's complete and still exists
+      const complete = downloads.find((dlItem) => dlItem.state === 'complete' && dlItem.exists);
+      if (complete !== undefined) {
+        this.onDownloadedQueueItemData(i);
+        this.logMessage(`Data download of ${dataFilename} already completed <button class="show-download-folder" data-id="${dlItem.id}">open download folder</button>`, 'success');
         this.resumeQueue();
         return;
       }
 
-      // check to see if asset is already being downloaded
-      const j = nextResourceIndex;
-      const nextResource = resources[j];
-      const resourcePath = `${qitem.item.uid}/${nextResource.filename}`;
-      const searchQuery = 'downloadId' in nextResource ? { id: nextResource.downloadId } : { filename: resourcePath };
-      this.browser.downloads.search(searchQuery).then((downloads) => {
-        // check if paused before the request was finished
-        if (!this.isInProgress) return;
+      // check to see if it's interrupted or paused and can resume
+      const interrupted = downloads.find((dlItem) => (dlItem.state === 'interrupted' || dlItem.paused) && dlItem.canResume);
+      if (interrupted !== undefined) {
+        this.browser.downloads.resume(interrupted.id);
+        this.state.queue[i].status = 'downloading data';
+        this.saveState();
+        this.renderQueue();
+        this.logMessage(`Resuming data download of ${dataFilename}`);
+        return;
+      }
 
-        // check to see if it is in progress
-        const inProgress = downloads.find((dlItem) => dlItem.state === 'in_progress');
-        if (inProgress !== undefined) {
-          this.state.queue[i].status = 'downloading assets';
-          this.state.queue[i].resources[j].status = 'in_progress';
-          this.saveState();
-          this.renderQueue();
-          return;
-        }
+      // otherwise, download the data
+      this.downloadQueueItemData(i, dataFilename);
+    }, (error) => {
+      // check if paused before the request was finished
+      if (!this.isInProgress) return;
+      this.downloadQueueItemData(i, dataFilename);
+    });
+  }
 
-        // check to see if it's complete and still exists
-        const complete = downloads.find((dlItem) => dlItem.state === 'complete' && dlItem.exists);
-        if (complete !== undefined) {
-          this.onDownloadedAsset(i, j);
-          return;
-        }
-
-        // check to see if it's interrupted or paused and can resume
-        const interrupted = downloads.find((dlItem) => (dlItem.state === 'interrupted' || dlItem.paused) && dlItem.canResume);
-        if (interrupted !== undefined) {
-          this.browser.downloads.resume(interrupted.id);
-          this.state.queue[i].status = 'downloading assets';
-          this.state.queue[i].resources[j].status = 'in_progress';
-          this.saveState();
-          this.renderQueue();
-          this.logMessage(`Resuming asset download of ${resourcePath}`);
-          return;
-        }
-
-        // otherwise, download asset from scratch
-        this.downloadItemAsset(i, j, nextResource.url, resourcePath);
-      }, (error) => {
-        // check if paused before the request was finished
-        if (!this.isInProgress) return;
-        this.downloadItemAsset(i, j, nextResource.url, resourcePath);
+  resumeQueueRequestData(i, qitem) {
+    const { maxDownloadAttempts, parseAPIResponse, timeBetweenRequests } = this.options;
+    const { fullTitle } = qitem.item;
+    const apiRequests = 'apiRequests' in qitem ? qitem.apiRequests : [];
+    // check to see if we have not yet made an API request yet
+    if (apiRequests.length === 0) {
+      apiRequests.push({
+        attempts: 0,
+        date: Date.now(),
+        index: 0,
+        response: false,
+        status: 'queued',
+        total: false,
+        url: qitem.item.apiURL,
       });
     }
+    let reqCount = apiRequests.length;
+    // retrieve the next API request
+    let nextActiveRequest = apiRequests.find((req) => req.status !== 'completed');
+    // all the API requests have been completed; check to see if there are any more
+    if (nextActiveRequest === undefined) {
+      const lastRequest = apiRequests[reqCount - 1];
+      // we have completed the API Requests
+      if (lastRequest.response.isLast) {
+        this.state.queue[i].status = 'retrieved data';
+        this.saveState();
+        this.resumeQueue();
+        return;
+      // otherwise, queue the next one
+      }
+      apiRequests.push({
+        attempts: 0,
+        date: Date.now(),
+        index: reqCount,
+        response: false,
+        status: 'queued',
+        total: lastRequest.total,
+        url: lastRequest.response.nextPageURL,
+      });
+      reqCount += 1;
+      nextActiveRequest = apiRequests[reqCount - 1];
+    }
+    // we're ready to make the next request
+    const j = nextActiveRequest.index;
+    const { index, total } = nextActiveRequest;
+    this.state.queue[i].status = 'retrieving data';
+    apiRequests[j].status = 'in progress';
+    apiRequests[j].attempts += 1;
+    const { attempts } = apiRequests[j];
+    // we reached too many attempts
+    if (attempts > maxDownloadAttempts) {
+      this.state.queue[i].status = 'data retrieval error';
+      this.state.queue[i].apiRequests[j].attempts = 0;
+      this.saveState();
+      this.logMessage(`Reached max attempts for API request ${nextActiveRequest.url}. Stopping queue. The website might be down or we reached an data request limit. Please try again later.`, 'error');
+      this.pauseQueue(true);
+      return;
+    }
+    this.renderQueue();
+    if (total !== false) this.logMessage(`Retrieving API data from "${fullTitle}" (request ${index + 1} of ${total})`, 'notice', (index > 0));
+    else this.logMessage(`Retrieving API data from "${fullTitle}" (first request)`);
+    // make the Request
+    fetch(nextActiveRequest.url)
+      .then((resp) => resp.json())
+      .then((resp) => {
+        // check if paused before the request was finished
+        if (!this.isInProgress) return;
+        const data = parseAPIResponse(resp);
+        // data successfully retrieved and parsed
+        if (data !== false) {
+          apiRequests[j].response = data;
+          apiRequests[j].total = data.total;
+          apiRequests[j].status = 'completed';
+        // error in parsing data
+        } else {
+          apiRequests[j].status = 'error';
+          this.logMessage(`Could not parse data from ${nextActiveRequest.url} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
+        }
+        // save the state and continue
+        this.state.queue[i].apiRequests = apiRequests.slice();
+        this.saveState();
+        setTimeout(() => {
+          this.resumeQueue();
+        }, timeBetweenRequests);
+      // error in the request
+      }).catch((error) => {
+        this.logMessage(error, 'error');
+        // check if paused before the request was finished
+        if (!this.isInProgress) return;
+        apiRequests[j].status = 'error';
+        this.logMessage(`Could not retrieve data from ${nextActiveRequest.url} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
+        // save the state and continue
+        this.state.queue[i].apiRequests = apiRequests.slice();
+        this.saveState();
+        setTimeout(() => {
+          this.resumeQueue();
+        }, timeBetweenRequests);
+      });
   }
 
   saveState() {
