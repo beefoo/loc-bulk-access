@@ -2,7 +2,7 @@
   "name": "loc-bulk-access",
   "description": "Browser extension to enable bulk access to Library of Congress digital collections data and assets",
   "scripts": {
-    "build-chrome": "node use.js chrome && node build.js chrome",
+    "build-chrome": "node use.js chrome && node build.js chrome && node use.js firefox",
     "build-firefox": "node use.js firefox && node build.js firefox",
     "listen": "web-ext run --source-dir \"loc-bulk-access/\" --devtools",
     "use-chrome": "node use.js chrome",

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LC Bulk Access",
-  "version": "1.0",
+  "version": "0.0.1",
   "author": "bfoo@loc.gov",
   "description": "Enable bulk access to Library of Congress digital collections data and assets",
   "icons": {

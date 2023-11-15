@@ -10,7 +10,7 @@
         "ecmaVersion": 12
     },
     "rules": {
-        "import/extensions": ["error", "never", { "js": "always" }],
+        "import/extensions": ["error", "never", { "js": "always", "json": "always" }],
         "no-console": "off",
         "no-undef": "off",
         "no-unused-vars": "off",
