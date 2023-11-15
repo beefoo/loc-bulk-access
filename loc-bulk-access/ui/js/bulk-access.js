@@ -86,8 +86,7 @@ export default class BulkAccess {
     // if this tab becomes active, refresh
     this.browser.tabs.onActivated.addListener((activeInfo) => {
       if (activeInfo.tabId === this.tabId) {
-        this.renderQueue();
-        this.renderQueueButton();
+        this.refreshState();
       }
     });
 
@@ -585,6 +584,14 @@ export default class BulkAccess {
     const incompleteItems = queue.filter((qitem) => qitem.status !== 'completed');
     this.state.queue = prunedItems.concat(incompleteItems);
     this.saveState();
+  }
+
+  refreshState() {
+    this.loadState().then((state) => {
+      this.state = state;
+      this.renderQueue();
+      this.renderQueueButton();
+    });
   }
 
   removeQueueItem(queueIndex) {
