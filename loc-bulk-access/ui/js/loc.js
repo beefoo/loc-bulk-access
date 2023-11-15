@@ -191,6 +191,7 @@ export default class LOC {
     const imageURLs = LOC.parseField(item, 'image_url', 'array', []);
     const imgCount = imageURLs.length;
     resp.image_url = imgCount > 0 ? imageURLs[imgCount - 1] : '';
+    resp.thumb_url = imgCount > 0 ? imageURLs[0] : '';
 
     // get the resource URL
     const { resources } = item;
