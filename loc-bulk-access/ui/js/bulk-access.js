@@ -56,6 +56,7 @@ export default class BulkAccess {
       const moveItemUp = e.target.closest('.move-item-up');
       const moveItemDown = e.target.closest('.move-item-down');
       const selectItem = e.target.closest('.select-item');
+      const retrySkippedAssets = e.target.closest('.retry-skipped-assets');
       if (removeItem) {
         this.removeQueueItem(parseInt(removeItem.getAttribute('data-index'), 10));
       } else if (moveItemUp) {
@@ -64,6 +65,8 @@ export default class BulkAccess {
         this.moveQueueItem(parseInt(moveItemDown.getAttribute('data-index'), 10), -1);
       } else if (selectItem) {
         this.selectQueueItem(parseInt(selectItem.getAttribute('data-index'), 10), selectItem.checked);
+      } else if (retrySkippedAssets) {
+        this.retrySkippedAssets(parseInt(retrySkippedAssets.getAttribute('data-index'), 10));
       }
     };
 
@@ -102,6 +105,10 @@ export default class BulkAccess {
       if (showDownloadFolder) {
         this.showDownloadFolder(parseInt(showDownloadFolder.getAttribute('data-id'), 10));
       }
+
+      // listen for retry skipped assets
+      const retrySkippedAssets = e.target.closest('.retry-skipped-assets');
+      if (retrySkippedAssets) this.retrySkippedAssets();
     };
 
     // listen for clear log
@@ -333,7 +340,8 @@ export default class BulkAccess {
       tag, text, time, type,
     };
     const logCount = this.state.log.length;
-    if (replace && logCount > 0 && this.state.log[0].type !== 'error') this.state.log[0] = logData;
+    // only replace notices
+    if (replace && logCount > 0 && this.state.log[0].type === 'notice') this.state.log[0] = logData;
     else this.state.log.unshift(logData);
 
     // limit the length of the log
@@ -529,6 +537,23 @@ export default class BulkAccess {
     });
   }
 
+  onQueueFinished() {
+    const { queue } = this.state;
+    this.pauseQueue(true);
+
+    // check if there were any skipped assets
+    const skippedAssets = queue.filter((qitem) => {
+      if (!('resources' in qitem)) return [];
+      return qitem.resources.filter((resource) => 'skipped' in resource && resource.skipped);
+    }).flat();
+    if (skippedAssets.length > 0) {
+      this.logMessage(`Queue finished with ${skippedAssets.length} skipped asset downloads. <button class="retry-skipped-assets">Retry skipped assets</button>`, 'done');
+      return;
+    }
+
+    this.logMessage('Queue finished!', 'done');
+  }
+
   openQueuePage() {
     const queuePageURL = this.browser.runtime.getURL('ui/queue.html');
     // check if query tab is already open
@@ -629,12 +654,16 @@ export default class BulkAccess {
     queue.toReversed().forEach((qitem, rindex) => {
       const index = qlen - rindex - 1;
       const { item } = qitem;
+      const hasSkipped = 'skipped' in qitem && qitem.skipped > 0;
       const facetsString = 'facets' in item && item.facets.length > 0 ? item.facets.map((f) => `<span class="facet">${f}</span>`).join('') : '';
       const title = facetsString.length > 0 ? `${item.title} ${facetsString}` : item.title;
       const selectedString = 'selected' in qitem && qitem.selected === true ? ' checked' : '';
       const statusClass = qitem.status.replaceAll(' ', '-');
-      const errorClass = statusClass.includes('error') ? 'has-error' : '';
-      const statusText = paused && !['queued', 'completed'].includes(qitem.status) ? 'paused' : qitem.status;
+      const errorClass = statusClass.includes('error') || hasSkipped ? 'has-error' : '';
+      let statusText = paused && !['queued', 'completed'].includes(qitem.status) ? 'paused' : qitem.status;
+      if (hasSkipped && qitem.status === 'completed') {
+        statusText += ` with errors <button class="retry-skipped-assets" data-id"${index}">retry</button>`;
+      }
       const inProgressClass = !paused && !['queued', 'completed'].includes(qitem.status) && !statusClass.includes('error') ? 'in-progress' : '';
       const disabledString = paused ? '' : 'disabled';
       html += `<tr class="status-${statusClass} ${inProgressClass} ${errorClass}">`;
@@ -650,6 +679,7 @@ export default class BulkAccess {
       html += `  <button class="move-item-up disable-when-active" data-index="${index}" title="Move up in queue" ${disabledString}><span class="visually-hidden">move up</span>🠹</button>`;
       html += `  <button class="move-item-down disable-when-active" data-index="${index}" title="Move down in queue" ${disabledString}><span class="visually-hidden">move down</span>🠻</button>`;
       html += `  <button class="remove-item disable-when-active" data-index="${index}" title="Remove from queue" ${disabledString}><span class="visually-hidden">remove</span>×</button>`;
+
       html += '</td>';
       html += '</tr>';
     });
@@ -694,8 +724,9 @@ export default class BulkAccess {
     delete this.state.queue[i].dataDownloadId;
   }
 
-  resumeQueue() {
-    if (!this.isInProgress) return;
+  resumeQueue(force = false) {
+    if (force === false && !this.isInProgress) return;
+    if (force === true) this.isInProgress = true;
 
     this.renderQueueButton();
     const { queue, settings } = this.state;
@@ -705,8 +736,7 @@ export default class BulkAccess {
 
     // no more; we are finished!
     if (nextActiveIndex < 0) {
-      this.pauseQueue(true);
-      this.logMessage('Queue finished!', 'done');
+      this.onQueueFinished();
       return;
     }
 
@@ -770,6 +800,8 @@ export default class BulkAccess {
     if (nextResourceIndex < 0) {
       this.state.queue[i].status = 'completed';
       this.state.queue[i].selected = false;
+      const skipped = resources.filter((resource) => 'skipped' in resource && resource.skipped);
+      this.state.queue[i].skipped = skipped.length;
       this.saveState();
       this.renderQueue();
       this.resumeQueue();
@@ -969,6 +1001,34 @@ export default class BulkAccess {
           this.resumeQueue();
         }, timeBetweenRequests);
       });
+  }
+
+  retrySkippedAssets(qIndex = -1) {
+    const { queue } = this.state;
+    let changed = false;
+    queue.forEach((qitem, i) => {
+      if (qIndex >= 0 && qIndex !== i) return;
+      if (!('resources' in qitem)) return;
+      let foundSkipped = false;
+      qitem.resources.forEach((resource, j) => {
+        if (!('skipped' in resource) || !resource.skipped) return;
+        this.state.queue[i].resources[j].skipped = false;
+        this.state.queue[i].resources[j].attempts = 0;
+        this.state.queue[i].resources[j].status = 'queued';
+        foundSkipped = true;
+      });
+      if (foundSkipped) {
+        this.state.queue[i].status = 'queued';
+        this.state.queue[i].skipped = 0;
+        changed = true;
+      }
+    });
+    if (changed) {
+      this.saveState();
+      this.renderQueue();
+      if (!this.isInProgress) this.resumeQueue(true);
+      else this.resumeQueue();
+    }
   }
 
   saveState() {

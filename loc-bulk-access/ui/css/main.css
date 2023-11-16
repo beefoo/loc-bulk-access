@@ -175,6 +175,11 @@ thead th {
   background: var(--error-light);
   color: var(--error-darker);
 }
+.queue-table td.status button {
+  font-size: 0.8rem;
+  padding: 2px 4px;
+  margin: 0;
+}
 
 .queue-toolbar {
   width: 100%;
