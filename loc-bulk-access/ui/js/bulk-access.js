@@ -10,6 +10,7 @@ export default class BulkAccess {
       maxDownloadAttempts: 3,
       maxLogCount: 500,
       parseAPIResponse: (apiResponse) => false,
+      resultLimit: 100000,
       timeBetweenRequests: 1000,
       timeBetweenAssetDownloadAttempts: 2000,
     };
@@ -155,7 +156,10 @@ export default class BulkAccess {
           .then((data) => {
             const resp = this.options.apiResponseValidator(data);
             el.classList.remove('is-loading');
-            if (resp.valid) {
+            if (resp.valid && resp.count > this.options.resultLimit) {
+              const resultLimit = this.options.resultLimit.toLocaleString();
+              reject(new Error(`Queries with over ${resultLimit} results are not supported at this time. Use facets to reduce the number of results in your query.`));
+            } else if (resp.valid) {
               resp.url = url;
               resp.apiURL = this.options.getAPIURL(url, this.options.apiItemsPerPage);
               resolve(resp);
