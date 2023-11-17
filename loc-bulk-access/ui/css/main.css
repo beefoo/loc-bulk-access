@@ -301,6 +301,7 @@ fieldset.toggle-target.active {
   font-size: 0.8rem;
   padding: 2px 4px;
   margin: 0;
+  white-space: nowrap;
 }
 
 .queue-page input:disabled,

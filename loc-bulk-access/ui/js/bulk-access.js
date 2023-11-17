@@ -547,15 +547,21 @@ export default class BulkAccess {
 
   onQueueFinished() {
     const { queue } = this.state;
+    const isSkipped = (qitem) => qitem.selected === true && 'skipped' in qitem && qitem.skipped > 0;
+
+    // check if there were any items with skipped assets
+    const skippedItems = queue.filter(isSkipped);
+
+    // uncheck selected queue items that don't have skipped items
+    queue.forEach((qitem, i) => {
+      this.state.queue[i].selected = isSkipped(qitem);
+    });
+    this.saveState();
     this.pauseQueue(true);
 
-    // check if there were any skipped assets
-    const skippedAssets = queue.map((qitem) => {
-      if (!('resources' in qitem)) return [];
-      return qitem.resources.filter((resource) => 'skipped' in resource && resource.skipped);
-    }).flat();
-    if (skippedAssets.length > 0) {
-      this.logMessage(`Queue finished with ${skippedAssets.length} skipped asset downloads`, 'done', false, '<button class="retry-skipped-assets">Retry skipped assets</button>');
+    if (skippedItems.length > 0) {
+      const sum = skippedItems.map((qitem) => qitem.skipped).reduce((memo, num) => memo + num, 0);
+      this.logMessage(`Queue finished with ${sum} skipped asset downloads`, 'done', false, '<button class="retry-skipped-assets">Retry skipped assets</button>');
       return;
     }
 
@@ -772,7 +778,7 @@ export default class BulkAccess {
     // if we downloaded the data and we only need to download data, item is completed
     if (qitem.status === 'downloaded data' && settings.downloadOption === 'data') {
       this.state.queue[i].status = 'completed';
-      this.state.queue[i].selected = false;
+      // this.state.queue[i].selected = false;
       this.saveState();
       this.renderQueue();
       this.resumeQueue();
@@ -810,7 +816,7 @@ export default class BulkAccess {
     // no resources left to download, mark as complete
     if (nextResourceIndex < 0) {
       this.state.queue[i].status = 'completed';
-      this.state.queue[i].selected = false;
+      // this.state.queue[i].selected = false;
       const skipped = resources.filter((resource) => 'skipped' in resource && resource.skipped);
       this.state.queue[i].skipped = skipped.length;
       this.saveState();
@@ -1019,6 +1025,7 @@ export default class BulkAccess {
     let changed = false;
     queue.forEach((qitem, i) => {
       if (qIndex >= 0 && qIndex !== i) return;
+      if (!qitem.selected) return;
       if (!('resources' in qitem)) return;
       let foundSkipped = false;
       qitem.resources.forEach((resource, j) => {
