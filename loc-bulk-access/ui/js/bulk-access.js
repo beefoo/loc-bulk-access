@@ -341,11 +341,11 @@ export default class BulkAccess {
     });
   }
 
-  logMessage(text, type = 'notice', replace = false, tag = '') {
+  logMessage(text, type = 'notice', replace = false, action = '') {
     const { maxLogCount } = this.options;
     const time = Utilities.getTimeString();
     const logData = {
-      tag, text, time, type,
+      action, text, time, type,
     };
     const logCount = this.state.log.length;
     // only replace notices
@@ -393,7 +393,7 @@ export default class BulkAccess {
     const downloadId = 'downloadId' in resource ? resource.downloadId : -1;
     this.state.queue[i].resources[j].status = 'completed';
     this.saveState();
-    this.logMessage(`Downloaded asset ${resource.filePath} (${j + 1} of ${resourceCount}) <button class="show-download-folder" data-id="${downloadId}">open download folder</button>`, 'notice', true);
+    this.logMessage(`Downloaded asset ${resource.filePath} (${j + 1} of ${resourceCount})`, 'notice', true, `<button class="show-download-folder" data-id="${downloadId}">open download folder</button>`);
     if (this.isInProgress) {
       setTimeout(() => {
         this.resumeQueue();
@@ -445,7 +445,7 @@ export default class BulkAccess {
         this.onDownloadedAsset(i, j);
       } else {
         this.onDownloadedQueueItemData(i);
-        this.logMessage(`Downloaded data to ${filename} <button class="show-download-folder" data-id="${downloadId}">open download folder</button>`, 'success', true);
+        this.logMessage(`Downloaded data to ${filename}`, 'success', true, `<button class="show-download-folder" data-id="${downloadId}">open download folder</button>`);
         if (this.isInProgress) this.resumeQueue();
       }
       return;
@@ -555,7 +555,7 @@ export default class BulkAccess {
       return qitem.resources.filter((resource) => 'skipped' in resource && resource.skipped);
     }).flat();
     if (skippedAssets.length > 0) {
-      this.logMessage(`Queue finished with ${skippedAssets.length} skipped asset downloads. <button class="retry-skipped-assets">Retry skipped assets</button>`, 'done');
+      this.logMessage(`Queue finished with ${skippedAssets.length} skipped asset downloads`, 'done', false, '<button class="retry-skipped-assets">Retry skipped assets</button>');
       return;
     }
 
@@ -644,11 +644,14 @@ export default class BulkAccess {
     const { log } = this.state;
     let html = '';
     log.forEach((message) => {
-      const { type, time, text } = message;
-      html += `<p class="log-message ${type}">`;
-      html += `<span class="time">${time}</span>`;
-      html += `<span class="text">${text}</span>`;
-      html += '</p>';
+      const {
+        action, text, time, type,
+      } = message;
+      html += `<div class="log-message ${type}">`;
+      html += `<div class="time">${time}</div>`;
+      html += `<div class="text">${text}</div>`;
+      html += `<div class="action">${action}</div>`;
+      html += '</div>';
     });
     logContainer.innerHTML = html;
   }
@@ -886,7 +889,7 @@ export default class BulkAccess {
       const complete = downloads.find((dlItem) => dlItem.state === 'complete' && dlItem.exists);
       if (complete !== undefined) {
         this.onDownloadedQueueItemData(i);
-        this.logMessage(`Data download of ${dataFilename} already completed <button class="show-download-folder" data-id="${dlItem.id}">open download folder</button>`, 'success');
+        this.logMessage(`Data download of ${dataFilename} already completed`, 'success', false, `<button class="show-download-folder" data-id="${dlItem.id}">open download folder</button>`);
         this.resumeQueue();
         return;
       }

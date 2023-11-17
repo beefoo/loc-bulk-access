@@ -267,31 +267,34 @@ fieldset.toggle-target.active {
 .queue-log {
   font-family: 'Courier New', Courier, monospace;
 }
-.queue-log p {
+.queue-log .log-message {
   margin: 0;
   padding: 3px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  gap: 12px;
 }
-.queue-log p .time {
+.log-message .time {
   font-style: italic;
   color: var(--base-light);
   font-size: 0.9em;
-  display: inline-block;
-  vertical-align: middle;
-  margin-right: 12px;
+  white-space: nowrap;
 }
-.queue-log p.success,
-.queue-log p.done {
+.log-message .text {
+  flex-grow: 1;
+}
+.log-message.success,
+.log-message.done {
   color: var(--success-light);
 }
-.queue-log p.done {
+.log-message.done {
   font-weight: bold;
   background: rgba(0, 255, 0, 0.05);
 }
-.queue-log p.error {
+.log-message.error {
   color: var(--error-light);
 }
-.queue-log p.notice {
+.log-message.notice {
   color: var(--notice-light);
 }
 .queue-log-container button {
