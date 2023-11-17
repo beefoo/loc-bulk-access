@@ -174,9 +174,8 @@ export default class LOC {
   static parseItem(item) {
     const resp = {};
 
-    resp.id = LOC.parseField(item, 'number_lccn');
-    resp.title = LOC.parseField(item, 'title');
     resp.url = LOC.parseField(item, 'url');
+    resp.title = LOC.parseField(item, 'title');
     resp.original_format = LOC.parseField(item, 'original_format');
     resp.online_formats = LOC.parseField(item, 'online_format', 'array', []);
     resp.subjects = LOC.parseField(item, 'subject', 'array', []);
@@ -186,6 +185,19 @@ export default class LOC {
     resp.locations = LOC.parseField(item, 'location', 'array', []);
     resp.partof = LOC.parseField(item, 'partof', 'array', []);
     resp.access_restricted = LOC.parseField(item, 'access_restricted');
+
+    // derive the id from the URL
+    // usually something like https://www.loc.gov/item/sn82015409/
+    // but can be something like https://www.loc.gov/item/sn82015409/1940-07-21/ed-1/
+    try {
+      const url = new URL(resp.url);
+      const { pathname } = url;
+      let idString = pathname.startsWith('/item/') ? pathname.slice('/item/'.length) : pathname;
+      idString = idString.replace(/\/$/, '').replace(/^\//, ''); // remove slashes from beginning and end
+      resp.id = idString.replaceAll('/', '-');
+    } catch (error) {
+      resp.id = Utilities.stringToId(resp.url);
+    }
 
     // get the last image, which is the largest
     const imageURLs = LOC.parseField(item, 'image_url', 'array', []);
@@ -228,6 +240,7 @@ export default class LOC {
     });
     const fileExtension = Utilities.getFileExtension(item.resource_url);
     const resource = {
+      itemURL: item.url,
       url: item.resource_url,
       format,
       fileExtension,

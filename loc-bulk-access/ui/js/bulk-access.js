@@ -209,6 +209,14 @@ export default class BulkAccess {
     const j = resourceIndex;
     const resource = this.state.queue[i].resources[j];
 
+    // skip if no URL
+    if (!url || url === '') {
+      this.state.queue[i].resources[j].status = 'completed';
+      this.logMessage(`No resource found for <a href="${resource.itemURL}" target="_blank">${resource.itemURL}</a>. skipping.`, 'error');
+      this.resumeQueue();
+      return;
+    }
+
     // check to see if we reached too many attempts
     if (resource.attempts >= this.options.maxDownloadAttempts) {
       this.state.queue[i].resources[j].status = 'completed';
@@ -243,7 +251,7 @@ export default class BulkAccess {
       this.state.queue[i].resources[j].status = 'error';
       this.state.queue[i].resources[j].error = error;
       this.state.queue[i].resources[j].attempts += 1;
-      this.logMessage(`Download of ${url} was interrupted. Retrying.`, 'error');
+      this.logMessage(`Download of ${url} was interrupted (${error}). Retrying.`, 'error');
       setTimeout(() => {
         this.resumeQueue();
       }, this.options.timeBetweenAssetDownloadAttempts);
@@ -445,7 +453,7 @@ export default class BulkAccess {
 
     // error triggered
     if (delta.error) {
-      this.logMessage(`Download error: ${data.error.current}`, 'error');
+      this.logMessage(`Download error: ${delta.error.current}`, 'error');
     }
 
     // state has changed to interrupted
@@ -542,7 +550,7 @@ export default class BulkAccess {
     this.pauseQueue(true);
 
     // check if there were any skipped assets
-    const skippedAssets = queue.filter((qitem) => {
+    const skippedAssets = queue.map((qitem) => {
       if (!('resources' in qitem)) return [];
       return qitem.resources.filter((resource) => 'skipped' in resource && resource.skipped);
     }).flat();
@@ -1020,6 +1028,7 @@ export default class BulkAccess {
       if (foundSkipped) {
         this.state.queue[i].status = 'queued';
         this.state.queue[i].skipped = 0;
+        this.state.queue[i].selected = true;
         changed = true;
       }
     });
