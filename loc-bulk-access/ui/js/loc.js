@@ -48,6 +48,16 @@ export default class LOC {
     return resp;
   }
 
+  static getFormatExtensions(format) {
+    const formatFileExtensions = {
+      audio: ['.mp3', '.ogg', '.wma', '.aiff', '.wav', '.flac'],
+      image: ['.jpg', '.jpeg', '.png', '.gif'],
+      'online text': ['.txt'],
+      video: ['.mp4', '.ogv', '.wmv', '.mpg', '.mkv', '.mov', '.avi'],
+    };
+    return formatFileExtensions[format];
+  }
+
   // function for creating an API URL based on current URL
   static getAPIURL(url, count = false) {
     if (!url) return false;
@@ -118,8 +128,9 @@ export default class LOC {
     } else {
       return false;
     }
-    // add filenames to results
+    // add resources and filenames to results
     resp.results.forEach((result, i) => {
+      resp.results[i].resource_url = resp.resources[i][0].url;
       resp.results[i].filename = resp.resources[i][0].filename;
     });
     return resp;
@@ -207,18 +218,6 @@ export default class LOC {
 
     // get the resource URL
     const { resources } = item;
-    let resourceUrl = '';
-    // check for video
-    if (resp.online_formats.includes('video')) {
-      resourceUrl = LOC.getResourceUrl(resources, 'video', ['.mp4', '.ogv', '.wmv', '.mpg', '.mkv', '.mov', '.avi']);
-    }
-    // check for audio
-    if (resourceUrl === '' && resp.online_formats.includes('audio')) {
-      resourceUrl = LOC.getResourceUrl(resources, 'audio', ['.mp3', '.ogg', '.wma', '.aiff', '.wav', '.flac']);
-    }
-    // otherwise, take the image
-    if (resourceUrl === '') resourceUrl = resp.image_url;
-    resp.resource_url = resourceUrl;
 
     // get resource count
     resp.resource_count = 1;
@@ -232,33 +231,57 @@ export default class LOC {
 
   static parseResources(item, apiItem, apiResources = []) {
     const resp = [];
-    // for now, just support images, audio, and video
-    const supportedFormats = ['image', 'audio', 'video'];
-    let format = 'image';
+    const { resources } = apiItem;
+
+    // check for non-image resources
+    const supportedFormats = ['video', 'audio', 'online text'];
+
+    // determine format and resource URL
+    let resourceUrl = '';
+    let format = '';
     supportedFormats.forEach((sformat) => {
-      if (item.online_formats.includes(sformat)) format = sformat;
+      if (format !== '') return;
+      if (item.online_formats.includes(sformat)) {
+        const rKey = sformat === 'online text' ? 'fulltext_file' : sformat;
+        const rValue = LOC.getResourceUrl(resources, rKey, LOC.getFormatExtensions(sformat));
+        if (rValue !== '') {
+          format = sformat;
+          resourceUrl = rValue;
+        }
+      }
     });
-    const fileExtension = Utilities.getFileExtension(item.resource_url);
-    const resource = {
-      itemURL: item.url,
-      url: item.resource_url,
-      format,
-      fileExtension,
-      filename: `${item.id}.${fileExtension}`,
-      status: 'queued',
-      attempts: 0,
-    };
+    if (format === '') {
+      format = 'image';
+      resourceUrl = item.image_url;
+    }
+    const formats = [{ format, resourceUrl }];
+    // also download the image if it is text
+    if (format === 'online text') formats.push({ format: 'image', resourceUrl: item.image_url });
+
     // generate different size resources for images
     const imageURLs = LOC.parseField(apiItem, 'image_url', 'array', []);
     const imgCount = imageURLs.length;
-    ['smallestUrl', 'mediumUrl', 'largestUrl'].forEach((urlKey) => {
-      if (format !== 'image') resource[urlKey] = resource.url;
-      else if (urlKey === 'largestUrl') resource[urlKey] = imageURLs[imgCount - 1];
-      else if (urlKey === 'smallestUrl') resource[urlKey] = imageURLs[0];
-      else resource[urlKey] = imageURLs[parseInt(Math.round(0.5 * (imgCount - 1)), 10)];
+
+    formats.forEach((f) => {
+      const fileExtension = Utilities.getFileExtension(f.resourceUrl);
+      const resource = {
+        itemURL: item.url,
+        url: f.resourceUrl,
+        format: f.format,
+        fileExtension,
+        filename: `${item.id}.${fileExtension}`,
+        status: 'queued',
+        attempts: 0,
+      };
+      // generate different size resources for images
+      ['smallestUrl', 'mediumUrl', 'largestUrl'].forEach((urlKey) => {
+        if (f.format !== 'image') resource[urlKey] = resource.url;
+        else if (urlKey === 'largestUrl') resource[urlKey] = imageURLs[imgCount - 1];
+        else if (urlKey === 'smallestUrl') resource[urlKey] = imageURLs[0];
+        else resource[urlKey] = imageURLs[parseInt(Math.round(0.5 * (imgCount - 1)), 10)];
+      });
+      resp.push(resource);
     });
-    // for now, just add one resource
-    resp.push(resource);
     // TODO: retrieve all resources
     return resp;
   }
