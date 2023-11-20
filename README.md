@@ -27,6 +27,10 @@ You can also find these instructions on the [Chrome Extension Developer website]
 
 ## Using the extension
 
+Once you install the extension using the instructions in the previous section, you can follow the following instructions:
+
+1. Perform any search or facet on loc.gov using the search bar or browsing to a specific collection.
+
 ## For Developers
 
 The latest versions of Chrome and Firefox extension APIs are nearly the same, so we recommend developing using Firefox and the [web-ext](https://github.com/mozilla/web-ext) command line tool that will listen for changes to the code and refresh the extension automatically. To run and edit the extension locally, you can do so with the following steps.
