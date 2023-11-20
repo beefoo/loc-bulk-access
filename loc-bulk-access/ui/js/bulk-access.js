@@ -1006,11 +1006,10 @@ export default class BulkAccess {
         }, timeBetweenRequests);
       // error in the request
       }).catch((error) => {
-        this.logMessage(error, 'error');
         // check if paused before the request was finished
         if (!this.isInProgress) return;
         apiRequests[j].status = 'error';
-        this.logMessage(`Could not retrieve data from ${nextActiveRequest.url} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
+        this.logMessage(`Could not retrieve data from ${nextActiveRequest.url}: ${error} (attempt #${attempts} of ${maxDownloadAttempts})`, 'error');
         // save the state and continue
         this.state.queue[i].apiRequests = apiRequests.slice();
         this.saveState();

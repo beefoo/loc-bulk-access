@@ -43,7 +43,7 @@ export default class Utilities {
     const [hashPart] = hashParts;
     const qParts = hashPart.split('?');
     const [ext] = qParts;
-    if ('/' in ext) return defaultExt;
+    if (ext.includes('/')) return defaultExt;
     return ext;
   }
 
