@@ -29,7 +29,14 @@ You can also find these instructions on the [Chrome Extension Developer website]
 
 Once you install the extension using the instructions in the previous section, you can follow the following instructions:
 
-1. Perform any search or facet on loc.gov using the search bar or browsing to a specific collection.
+1. Perform any search or facet on loc.gov using the search box or browsing to a specific collection. For this example, we will download the metadata and associated audio files for the [Southern Mosaic collection, with location Texas and query "ballad"](https://www.loc.gov/collections/john-and-ruby-lomax/?fa=original-format:sound+recording%7Clocation:texas&q=ballad) (~51 items)
+2. If you have the browser extension pinned, you should see a small LOC icon next to the search toolbar. Click it.
+3. You should see a pop-up that will analyze your current search or collection page. If it is valid, you should see a button appear to allow you to add this to your queue.
+4. Once you add it to your queue, you can click "View queue" to see what you have added to your queue.
+5. You can continue to add to the queue until you are ready to download.
+6. When you are ready, select "Download both" to download both the metadata and audio assets for this collection
+7. Then click "Start queue" which will start the download process.
+8. All files will be downloaded directly to your default downloads folder. In your browser settings, ensure you deselect "Ask where to save each file before downloading," otherwise, your browser will prompt you where to save after each and every downloaded file!
 
 ## For Developers
 
