@@ -29,6 +29,7 @@ export default class BulkAccess {
         assetSize: 'smallest',
         resourceDownload: 'first',
       },
+      batch: {},
     };
     this.state = this.defaultState;
   }
@@ -263,6 +264,19 @@ export default class BulkAccess {
     this.renderQueue();
   }
 
+  static dataToURL(dataArray, dataFormat) {
+    // convert data to a downloadable url
+    let dataString = '';
+    if (dataFormat === 'csv') dataString = Utilities.getCSVString(dataArray);
+    else dataString = JSON.stringify(dataArray);
+    const dataBytes = new TextEncoder().encode(dataString);
+    const dataBlob = new Blob([dataBytes], {
+      type: `application/${dataFormat};charset=utf-8`,
+    });
+    const dataURL = URL.createObjectURL(dataBlob);
+    return dataURL;
+  }
+
   downloadQueueItemData(i, dataFilename) {
     const { settings } = this.state;
     const qitem = this.state.queue[i];
@@ -270,23 +284,19 @@ export default class BulkAccess {
     // retrieve metadata
     const flatResults = this.constructor.getFlattenedResults(qitem);
 
-    // no metadata (and thus no assets) to download; mark everything as complete
-    if (flatResults.length === 0) {
-      this.state.queue[i].status = 'completed';
+    // no metadata (and thus no assets) to download
+    // OR only a single item which we will download later in a combined .csv
+    // mark as complete
+    if (flatResults.length <= 1) {
+      this.state.queue[i].status = flatResults.length <= 0 ? 'completed' : 'downloaded data';
       this.saveState();
       this.renderQueue();
+      if (this.isInProgress) this.resumeQueue();
       return;
     }
 
-    // convert data to a downloadable url
-    let dataString = '';
-    if (settings.dataFormat === 'csv') dataString = Utilities.getCSVString(flatResults);
-    else dataString = JSON.stringify(flatResults);
-    const dataBytes = new TextEncoder().encode(dataString);
-    const dataBlob = new Blob([dataBytes], {
-      type: `application/${settings.dataFormat};charset=utf-8`,
-    });
-    const dataURL = URL.createObjectURL(dataBlob);
+    // convert data to a URL
+    const dataURL = this.constructor.dataToURL(flatResults, settings.dataFormat);
 
     // trigger download
     this.browser.downloads.download({
@@ -312,6 +322,42 @@ export default class BulkAccess {
     this.saveState();
     this.renderQueue();
     this.logMessage(`Downloading data to file ${dataFilename}`);
+  }
+
+  downloadQueueItemDataCombined() {
+    const { queue, settings } = this.state;
+    // generate a unique name for this file
+    const uid = Utilities.stringToId(Utilities.getTimeString());
+    const dataFilename = `item-metadata-${uid}.${settings.dataFormat}`;
+    // retrieve selected items
+    const qitems = queue.filter((qitem) => qitem.selected);
+    const flatResults = qitems.map((qitem) => this.constructor.getFlattenedResults(qitem)).flat();
+
+    // convert data to a URL
+    const dataURL = this.constructor.dataToURL(flatResults, settings.dataFormat);
+
+    // trigger download
+    this.browser.downloads.download({
+      conflictAction: 'overwrite',
+      filename: dataFilename,
+      saveAs: false,
+      url: dataURL,
+    // on download start
+    }).then((id) => {
+      this.state.batch.dataDownloadCombinedId = id;
+      this.saveState();
+    // on download interrupt
+    }, (error) => {
+      if (!this.isInProgress) return;
+      this.logMessage(`Download of ${dataFilename} was interrupted. Retrying.`, 'error');
+      this.resumeQueue();
+    });
+
+    // save state
+    this.state.batch.dataCombinedURL = dataURL;
+    this.state.batch.dataCombinedFilename = dataFilename;
+    this.saveState();
+    this.logMessage(`Downloading combined data to file ${dataFilename}`);
   }
 
   static getFlattenedResults(qitem) {
@@ -409,14 +455,24 @@ export default class BulkAccess {
     this.renderQueue();
   }
 
+  onDownloadedQueueItemDataCombined() {
+    const { batch } = this.state;
+    this.state.batch.dataCombinedCompleted = true;
+    if ('dataCombinedURL' in batch) URL.revokeObjectURL(batch.dataCombinedURL);
+    this.saveState();
+  }
+
   onDownloadsChanged(delta) {
-    const { queue } = this.state;
+    const { batch, queue } = this.state;
     const downloadId = delta.id;
+    const dataDownloadCombinedId = 'dataDownloadCombinedId' in batch ? batch.dataDownloadCombinedId : false;
     let i = queue.findIndex((item) => item.dataDownloadId === downloadId);
     let j;
     let isAsset = false;
+    const isCombinedData = dataDownloadCombinedId !== false
+                            && dataDownloadCombinedId === downloadId;
     // not data download; check to see if asset download
-    if (i < 0) {
+    if (i < 0 && !isCombinedData) {
       const assets = queue.map((item, ii) => {
         if (!('resources' in item)) return [];
         return item.resources.map((resource, jj) => {
@@ -435,14 +491,22 @@ export default class BulkAccess {
         j = foundAsset.resourceIndex;
       } else return;
     }
-    const qItem = queue[i];
+    const qItem = isCombinedData ? false : queue[i];
     const resource = isAsset ? qItem.resources[j] : false;
-    const filename = resource !== false ? resource.url : qItem.dataFilename;
+    let filename = 'file';
+
+    if (resource !== false) filename = resource.url;
+    else if (qItem !== false) filename = qItem.dataFilename;
+    else if ('dataCombinedFilename' in batch) filename = batch.dataCombinedFilename;
 
     // state has changed to complete
     if (delta.state && delta.state.current === 'complete') {
       if (isAsset) {
         this.onDownloadedAsset(i, j);
+      } else if (isCombinedData) {
+        this.onDownloadedQueueItemDataCombined();
+        this.logMessage(`Downloaded combined data to ${filename}`, 'success', true, `<button class="show-download-folder" data-id="${downloadId}">open download folder</button>`);
+        if (this.isInProgress) this.resumeQueue();
       } else {
         this.onDownloadedQueueItemData(i);
         this.logMessage(`Downloaded data to ${filename}`, 'success', true, `<button class="show-download-folder" data-id="${downloadId}">open download folder</button>`);
@@ -508,6 +572,30 @@ export default class BulkAccess {
     });
   }
 
+  onQueueFinished() {
+    const { queue } = this.state;
+    const isSkipped = (qitem) => qitem.selected === true && 'skipped' in qitem && qitem.skipped > 0;
+
+    // check if there were any items with skipped assets
+    const skippedItems = queue.filter(isSkipped);
+
+    // uncheck selected queue items that don't have skipped items
+    queue.forEach((qitem, i) => {
+      this.state.queue[i].selected = isSkipped(qitem);
+    });
+    this.state.batch = {};
+    this.saveState();
+    this.pauseQueue(true);
+
+    if (skippedItems.length > 0) {
+      const sum = skippedItems.map((qitem) => qitem.skipped).reduce((memo, num) => memo + num, 0);
+      this.logMessage(`Queue finished with ${sum} skipped asset downloads`, 'done', false, '<button class="retry-skipped-assets">Retry skipped assets</button>');
+      return;
+    }
+
+    this.logMessage('Queue finished!', 'done');
+  }
+
   onStartup() {
     const statePromise = this.loadState();
     const tabsPromise = this.browser.tabs.query({ active: true, currentWindow: true });
@@ -543,29 +631,6 @@ export default class BulkAccess {
       this.renderQueueButton();
       this.addQueueListeners();
     });
-  }
-
-  onQueueFinished() {
-    const { queue } = this.state;
-    const isSkipped = (qitem) => qitem.selected === true && 'skipped' in qitem && qitem.skipped > 0;
-
-    // check if there were any items with skipped assets
-    const skippedItems = queue.filter(isSkipped);
-
-    // uncheck selected queue items that don't have skipped items
-    queue.forEach((qitem, i) => {
-      this.state.queue[i].selected = isSkipped(qitem);
-    });
-    this.saveState();
-    this.pauseQueue(true);
-
-    if (skippedItems.length > 0) {
-      const sum = skippedItems.map((qitem) => qitem.skipped).reduce((memo, num) => memo + num, 0);
-      this.logMessage(`Queue finished with ${sum} skipped asset downloads`, 'done', false, '<button class="retry-skipped-assets">Retry skipped assets</button>');
-      return;
-    }
-
-    this.logMessage('Queue finished!', 'done');
   }
 
   openQueuePage() {
@@ -746,13 +811,23 @@ export default class BulkAccess {
     if (force === true) this.isInProgress = true;
 
     this.renderQueueButton();
-    const { queue, settings } = this.state;
+    const { queue, settings, batch } = this.state;
 
     // retrieve the next active item in the queue
     const nextActiveIndex = queue.findIndex((qitem) => this.constructor.isQueueItemActive(qitem));
 
-    // no more; we are finished!
+    // no more in queue
     if (nextActiveIndex < 0) {
+      // check to see if we should download a combined data file
+      const selectedItems = queue.filter((qitem) => qitem.selected);
+      if (['data', 'both'].includes(settings.downloadOption)
+          && selectedItems.length > 1
+          && !('dataCombinedCompleted' in batch)) {
+        this.resumeQueueDownloadDataCombined();
+        return;
+      }
+
+      // we're finished!
       this.onQueueFinished();
       return;
     }
@@ -811,6 +886,7 @@ export default class BulkAccess {
       this.saveState();
     }
 
+    const isSingleItem = resources.length === 1;
     const nextResourceIndex = resources.findIndex((resource) => resource.status !== 'completed');
 
     // no resources left to download, mark as complete
@@ -828,7 +904,8 @@ export default class BulkAccess {
     // check to see if asset is already being downloaded
     const j = nextResourceIndex;
     const nextResource = resources[j];
-    const resourcePath = `${qitem.item.uid}/${nextResource.filename}`;
+    // if single item, don't put it in a sub-folder
+    const resourcePath = isSingleItem ? nextResource.filename : `${qitem.item.uid}/${nextResource.filename}`;
     const searchQuery = 'downloadId' in nextResource ? { id: nextResource.downloadId } : { filename: resourcePath };
     this.browser.downloads.search(searchQuery).then((downloads) => {
       // check if paused before the request was finished
@@ -917,6 +994,51 @@ export default class BulkAccess {
       // check if paused before the request was finished
       if (!this.isInProgress) return;
       this.downloadQueueItemData(i, dataFilename);
+    });
+  }
+
+  resumeQueueDownloadDataCombined() {
+    const { batch } = this.state;
+    // check to see if file already exists in downloads
+    const searchQuery = 'dataDownloadCombinedId' in batch ? { id: batch.dataDownloadCombinedId } : false;
+
+    // no existing download, start to download
+    if (searchQuery === false) {
+      this.downloadQueueItemDataCombined();
+      return;
+    }
+
+    this.browser.downloads.search(searchQuery).then((downloads) => {
+      // check if paused before the request was finished
+      if (!this.isInProgress) return;
+
+      // check to see if it is in progress
+      const inProgress = downloads.find((dlItem) => dlItem.state === 'in_progress');
+      if (inProgress !== undefined) return;
+
+      // check to see if it's complete and still exists
+      const complete = downloads.find((dlItem) => dlItem.state === 'complete' && dlItem.exists);
+      if (complete !== undefined) {
+        this.onDownloadedQueueItemDataCombined();
+        this.logMessage('Data download of combined data already completed', 'success', false, `<button class="show-download-folder" data-id="${dlItem.id}">open download folder</button>`);
+        this.resumeQueue();
+        return;
+      }
+
+      // check to see if it's interrupted or paused and can resume
+      const interrupted = downloads.find((dlItem) => (dlItem.state === 'interrupted' || dlItem.paused) && dlItem.canResume);
+      if (interrupted !== undefined) {
+        this.browser.downloads.resume(interrupted.id);
+        this.logMessage('Resuming data download of combined data');
+        return;
+      }
+
+      // otherwise, download the data
+      this.downloadQueueItemDataCombined();
+    }, (error) => {
+      // check if paused before the request was finished
+      if (!this.isInProgress) return;
+      this.downloadQueueItemDataCombined();
     });
   }
 
