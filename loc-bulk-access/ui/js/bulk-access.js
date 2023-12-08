@@ -804,6 +804,10 @@ export default class BulkAccess {
   requeueItem(i) {
     this.state.queue[i].status = 'queued';
     delete this.state.queue[i].dataDownloadId;
+    if (!('resources' in this.state.queue[i])) return;
+    this.state.queue[i].resources.forEach((resource, j) => {
+      this.state.queue[i].resources[j].status = 'queued';
+    });
   }
 
   resumeQueue(force = false) {
