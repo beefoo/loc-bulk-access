@@ -6,7 +6,17 @@ export default class LOC {
   // function for validating an API response
   static apiResponseValidator(apiResponse) {
     const resp = { valid: false, message: 'This is not a valid page. Please search or navigate to a page with at least one collection item.' };
-    if ('item' in apiResponse) {
+    if ('page' in apiResponse && apiResponse.page.length > 0) {
+      const pageTitle = `${apiResponse.pagination.current} of ${apiResponse.pagination.of}`;
+      resp.valid = true;
+      resp.message = 'Found one resource on this page.';
+      resp.type = 'resource';
+      resp.count = 1;
+      resp.countF = '1';
+      resp.title = `${apiResponse.item.title} (Page ${pageTitle})`;
+      resp.uid = Utilities.stringToId(resp.title);
+      resp.facets = [];
+    } else if ('item' in apiResponse) {
       resp.valid = true;
       resp.message = 'Found one item on this page.';
       resp.type = 'item';
@@ -105,8 +115,18 @@ export default class LOC {
       isLast: false,
       total: false,
     };
+    // this is a resource
+    if ('page' in apiResponse && 'item' in apiResponse && apiResponse.page.length > 0) {
+      const { page, pagination } = apiResponse;
+      const item = LOC.parseItem(apiResponse.item);
+      item.resource_page_url = 'segments' in apiResponse && apiResponse.segments.length > 0 ? apiResponse.segments[0].id : '';
+      resp.results = [item];
+      const resource = LOC.parseResourcesFromPage(item, page, pagination.current);
+      resp.resources = [resource];
+      resp.isLast = true;
+      resp.total = 1;
     // this is an item
-    if ('item' in apiResponse) {
+    } else if ('item' in apiResponse) {
       const item = LOC.parseItem(apiResponse.item);
       resp.results = [item];
       const resource = LOC.parseResources(item, apiResponse.item, apiResponse.resources);
@@ -130,6 +150,7 @@ export default class LOC {
     }
     // add resources and filenames to results
     resp.results.forEach((result, i) => {
+      if (resp.resources[i].length === 0) return;
       resp.results[i].resource_url = resp.resources[i][0].url;
       resp.results[i].filename = resp.resources[i][0].filename;
     });
@@ -226,6 +247,9 @@ export default class LOC {
       resp.resource_count = 'files' in firstResource ? firstResource.files : 1;
     }
 
+    // sometimes an item is via a resource page
+    resp.resource_page_url = '';
+
     return resp;
   }
 
@@ -283,6 +307,50 @@ export default class LOC {
       resp.push(resource);
     });
     // TODO: retrieve all resources
+    return resp;
+  }
+
+  static parseResourcesFromPage(item, apiPage, pageNumber = 1) {
+    const resp = [];
+    // let's assume that the resources will be images and optionally text
+    const supportedFormats = [
+      { format: 'image', mimetype: 'image/jpeg' },
+      { format: 'online text', mimetype: 'text/plain' },
+    ];
+    supportedFormats.forEach((f) => {
+      const matches = apiPage.filter((p) => 'mimetype' in p && 'url' in p && p.mimetype === f.mimetype);
+      if (!matches || matches.length === 0) return;
+      // if image, sort by height (largest first)
+      if (f.format === 'image') {
+        matches.sort((a, b) => {
+          if (!('height' in a) && !('height' in b)) return 0;
+          if (!('height' in a) || a.height < b.height) return 1;
+          if (!('height' in b) || a.height > b.height) return -1;
+          return 0;
+        });
+      }
+      const [match] = matches;
+      const fileExtension = Utilities.getFileExtension(match.url);
+      const resource = {
+        itemURL: item.url,
+        url: match.url,
+        format: f.format,
+        fileExtension,
+        filename: `${item.id}-${pageNumber}.${fileExtension}`,
+        status: 'queued',
+        attempts: 0,
+      };
+      // generate different size resources for images
+      const urls = matches.map((m) => m.url);
+      const count = urls.length;
+      ['smallestUrl', 'mediumUrl', 'largestUrl'].forEach((urlKey) => {
+        if (f.format !== 'image') resource[urlKey] = resource.url;
+        else if (urlKey === 'largestUrl') resource[urlKey] = urls[0];
+        else if (urlKey === 'smallestUrl') resource[urlKey] = urls[count - 1];
+        else resource[urlKey] = urls[parseInt(Math.round(0.5 * (count - 1)), 10)];
+      });
+      resp.push(resource);
+    });
     return resp;
   }
 }
