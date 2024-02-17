@@ -169,7 +169,8 @@ export default class BulkAccess {
               reject(new Error(`Queries with over ${resultLimit} results are not supported at this time. Use facets to reduce the number of results in your query.`));
             } else if (resp.valid) {
               resp.url = url;
-              resp.apiURL = this.options.getAPIURL(url, this.options.apiItemsPerPage);
+              const count = resp.type === 'item' || resp.type === 'resource' ? false : this.options.apiItemsPerPage;
+              resp.apiURL = this.options.getAPIURL(url, count);
               resolve(resp);
             } else {
               reject(validator.message);
