@@ -10,7 +10,7 @@ This extension is currently in a **public "beta" release**, meaning it is open t
 
 ### Chrome Installation
 
-1. Download the latest [Chrome extension](https://github.com/LibraryOfCongress/loc-bulk-access/releases/download/v0.0.1/loc-bulk-access-chrome-0.0.1.zip) and unzip it. Note: the latest and past versions of the extensions will be listed in the repository's [releases section](https://github.com/LibraryOfCongress/loc-bulk-access/releases).
+1. Download the latest Chrome extension from the repository's [releases section](https://github.com/LibraryOfCongress/loc-bulk-access/releases) and unzip it.
 2. Go to the Extensions page by entering `chrome://extensions` in a new tab.
 3. Enable Developer Mode by clicking the toggle switch next to **Developer mode**.
 4. Click the **Load unpacked** button and select the unzipped extension directory.
@@ -20,7 +20,7 @@ You can also find these instructions on the [Chrome Extension Developer website]
 
 ### Firefox Installation
 
-1. Download the latest [Firefox extension](https://github.com/LibraryOfCongress/loc-bulk-access/releases/download/v0.0.1/loc-bulk-access-firefox-0.0.1.zip). Note: the latest and past versions of the extensions will be listed in the repository's [releases section](https://github.com/LibraryOfCongress/loc-bulk-access/releases).
+1. Download the latest Firefoxextension from the repository's [releases section](https://github.com/LibraryOfCongress/loc-bulk-access/releases) and unzip it.
 2. Type `about:addons` in the Firefox URL bar.
 3. Next to "Manage Your Extensions", click the gear icon, select **Install Add-on From File**, and select the zipped file that you downloaded from step 1.
 4. Once installed, click **Extensions menu puzzle button** next to your search bar, and you should see the "LC Bulk Access" extension listed there, which you can pin to your toolbar.

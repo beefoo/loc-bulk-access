@@ -4,12 +4,16 @@ const fs = require('fs');
 // check for args
 const browser = process.argv[2];
 // config
-const srcDir = 'loc-bulk-access/';
-const destDir = 'builds/';
+const srcDir = './loc-bulk-access/';
+const destDir = './builds';
 const manifest = require('./loc-bulk-access/manifest.json');
 
+if (!fs.existsSync(destDir)) {
+  fs.mkdirSync(destDir);
+}
+
 const { version } = manifest;
-const destFile = `${destDir}loc-bulk-access-${browser}-${version}.zip`;
+const destFile = `${destDir}/loc-bulk-access-${browser}-${version}.zip`;
 
 function zipDirectory(sourceDir, outPath) {
   const archive = archiver('zip', { zlib: { level: 9 } });
